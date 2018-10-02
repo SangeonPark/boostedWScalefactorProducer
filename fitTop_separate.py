@@ -89,7 +89,6 @@ def getPavetext():
     addInfo.SetTextAlign(12)
     return addInfo
 
-
 def drawDataMc(iVar,iData,iFuncsData,iMc,iFuncsMc,iRooFitResult_mc,iRooFitResult_data,params,iLabel='A'):
     lCan   = r.TCanvas(str(iLabel),str(iLabel),800,600)
     lFrame = iVar.frame()
@@ -147,168 +146,177 @@ def getPull(iVar,iPlot):
     pPull.GetYaxis().SetLabelSize(0.10);
     return pPull
 
+# add gaussian constraint                                                                                                   
+def addConstraint(iVar,iMean,iSigma,iList):
+    lMean = r.RooRealVar("%s_mean"%iVar.GetName(),"%s_mean"%iVar.GetName(),iMean);
+    lSigma = r.RooRealVar("%s_sigma"%iVar.GetName(),"%s_sigma"%iVar.GetName(),iSigma);
+    lConstraint = r.RooGaussian("constraint_pdf_%s"%iVar.GetName(),"constraint_pdf_%s"%iVar.GetName(),iVar,lMean,lSigma)
+    iList.append(lConstraint.GetName())
+    return lConstraint
+
 # make Pdf from model, probably should put parameters in dictionary
 def makePdf(iWorkspace,iLabel,iModel,iMc=False):
-        lVar = iWorkspace.var(fVar);        
-        pVarHigh       = r.RooRealVar("%sHi_%s"%(lVar.GetName(),iLabel),"%sHi_%s"%(lVar.GetName(),iLabel),0.5,0.,1.);
-        pVarHigh1      = r.RooRealVar("%sHi1_%s"%(lVar.GetName(),iLabel),"%sHi1_%s"%(lVar.GetName(),iLabel),0.5,0.,1.);
-        print 'making pdf' 
-        lModelPdf = None
-        lTag = "%s_%s"%(iModel,iLabel)
+    lVar = iWorkspace.var(fVar);        
+    print 'making pdf' 
+    lModelPdf = None
+    lTag = "%s_%s"%(iModel,iLabel)
+    pVarHigh       = r.RooRealVar("%sHi_%s"%(lVar.GetName(),lTag),"%sHi_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
+    pVarHigh1      = r.RooRealVar("%sHi1_%s"%(lVar.GetName(),lTag),"%sHi1_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
     
-        if iModel == "Exp_mc":
-            lC_Exp_mc         = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.03,-2.,0.05)
-            lModelPdf      = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_mc);
+    if iModel == "Exp_mc":
+        lC_Exp_mc         = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.03,-2.,0.05)
+        lModelPdf      = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_mc);
+        
+    if iModel == "Exp_data":
+        lC_Exp_data         = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.03,-2.,0.05)
+        lModelPdf      = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_data);
+        
+    if iModel == "PolyGaus_st_mc":
+        lMean_Gaus_mc      = r.RooRealVar("mean_mc"+lTag,"mean_mc"+lTag,175.,120.,190.)
+        lSigma_Gaus_mc     = r.RooRealVar("sigma_mc"+lTag,"sigma_mc"+lTag,15.,0.,100.)
+        pGaus_mc           = r.RooGaussian("gaus_mc"+lTag,"gaus_mc%s"+lTag,lVar,lMean_Gaus_mc,lSigma_Gaus_mc)
+        lMean2_Gaus_mc      = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,150.,140.,175.)
+        lSigma2_Gaus_mc     = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,80.,40.,100.)
+        pGaus2_mc           = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean2_Gaus_mc,lSigma2_Gaus_mc)
+        la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.003,-0.005,0.)
+        #la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.04,-.1,0.)
+        #la2_mc             = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,0.1,0.,1.)
+        #pPoly_mc           = r.RooExponential("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,la1_mc)
+        pPoly_mc           = r.RooPolynomial("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,r.RooArgList(la1_mc),1)
+        lModelPdf          = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_mc,pPoly_mc),r.RooArgList(pVarHigh))
 
-        if iModel == "Exp_data":
-            lC_Exp_data         = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.03,-2.,0.05)
-            lModelPdf      = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_data);
+    if iModel == "PolyGaus_st_data":
+        lMean_Gaus_data      = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,120.,190.)
+        lSigma_Gaus_data     = r.RooRealVar("sigma_data"+lTag,"sigma_data"+lTag,15.,0.,100.)
+        pGaus_data           = r.RooGaussian("gaus_data"+lTag,"gaus_data%s"+lTag,lVar,lMean_Gaus_data,lSigma_Gaus_data)
+        #lMean2_Gaus_data      = r.RooRealVar("mean2_data"+lTag,"mean2_data"+lTag,150.,140.,175.)
+        #lSigma2_Gaus_data     = r.RooRealVar("sigma2_data"+lTag,"sigma2_data"+lTag,80.,40.,100.)
+        #pGaus2_data           = r.RooGaussian("gaus2_data"+lTag,"gaus2_data%s"+lTag,lVar,lMean2_Gaus_data,lSigma2_Gaus_data)
+        la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.003,-0.005,0.)
+        #la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.04,-.1,0.)
+        #la2_data             = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,0.1,0.,1.)
+        pPoly_data             = r.RooPolynomial("poly_data"+lTag,"poly_data%s"+lTag,lVar,r.RooArgList(la1_data),1)
+        #pPoly_data           = r.RooExponential("poly_data"+lTag,"poly_data%s"+lTag,lVar,la1_data)
+        lModelPdf            = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_data,pPoly_data),r.RooArgList(pVarHigh))
 
+    if iModel == "ErfExpGaus_st_mc":
+        lC_ErfExp_mc      = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.05,-0.2,0.0)
+        lOffSet_ErfExp_mc  = r.RooRealVar("offset_mc"+lTag,"offset_mc"+lTag,175.,140.,300.)
+        lWidth_ErfExp_mc   = r.RooRealVar("width_mc"+lTag,"width_mc"+lTag,30.,10.,300.)
+        lMean_Gaus_mc      = r.RooRealVar("mean_mc"+lTag,"mean_mc"+lTag,175.,140.,200.)
+        lSigma_Gaus_mc     = r.RooRealVar("sigma_mc"+lTag,"sigma_mc"+lTag,7.,0.,40.)
+        pGaus_mc           = r.RooGaussian("gaus_mc"+lTag,"gaus_mc%s"+lTag,lVar,lMean_Gaus_mc,lSigma_Gaus_mc)
+        #add W 
+        #lMean_Gaus_mc2    = r.RooRealVar("mean_mc2"+lTag,"mean_mc2"+lTag,85.,75.,95.)
+        #lSigma_Gaus_mc2   = r.RooRealVar("sigma_mc2"+lTag,"sigma_mc2"+lTag,10.,2.,20.)
+        #pGaus_mc2         = r.RooGaussian("gaus_mc2"+lTag,"gaus_mc2%s"+lTag,lVar,lMean_Gaus_mc2,lSigma_Gaus_mc2)
+        
+        pErfExp_mc         = r.RooErfExpPdf("erfExp_mc"+lTag,"erfExp_mc%s"+lTag,lVar,lC_ErfExp_mc,lOffSet_ErfExp_mc,lWidth_ErfExp_mc);
+        #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_mc,pGaus_mc,pGaus_mc2),r.RooArgList(pVarHigh,pVarHigh1));
+        lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_mc,pGaus_mc),r.RooArgList(pVarHigh));
 
-        if iModel == "PolyGaus_st_mc":
-            lMean_Gaus_mc      = r.RooRealVar("mean_mc"+lTag,"mean_mc"+lTag,175.,120.,190.)
-            lSigma_Gaus_mc     = r.RooRealVar("sigma_mc"+lTag,"sigma_mc"+lTag,15.,0.,100.)
-            pGaus_mc           = r.RooGaussian("gaus_mc"+lTag,"gaus_mc%s"+lTag,lVar,lMean_Gaus_mc,lSigma_Gaus_mc)
-            lMean2_Gaus_mc      = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,150.,140.,175.)
-            lSigma2_Gaus_mc     = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,80.,40.,100.)
-            pGaus2_mc           = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean2_Gaus_mc,lSigma2_Gaus_mc)
-            la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.003,-0.005,0.)
-            #la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.04,-.1,0.)
-            #la2_mc             = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,0.1,0.,1.)
-            #pPoly_mc           = r.RooExponential("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,la1_mc)
-            pPoly_mc           = r.RooPolynomial("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,r.RooArgList(la1_mc),1)
-            lModelPdf          = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_mc,pPoly_mc),r.RooArgList(pVarHigh))
+    if iModel == "ErfExpGaus_st_data":
+        lC_ErfExp_data      = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.05,-0.2,0.0)
+        lOffSet_ErfExp_data = r.RooRealVar("offset_data"+lTag,"offset_data"+lTag,175.,140.,300.)
+        lWidth_ErfExp_data  = r.RooRealVar("width_data"+lTag,"width_data"+lTag,30.,10.,300.)
+        lMean_Gaus_data     = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,140.,200.)
+        lSigma_Gaus_data    = r.RooRealVar("sigma_data"+lTag,"sigma_data"+lTag,7.,0.,40.)
+        pGaus_data          = r.RooGaussian("gaus_data"+lTag,"gaus_data%s"+lTag,lVar,lMean_Gaus_data,lSigma_Gaus_data)
+        #add W 
+        #lMean_Gaus_data2    = r.RooRealVar("mean_data2"+lTag,"mean_data2"+lTag,85.,75.,95.)
+        #lSigma_Gaus_data2   = r.RooRealVar("sigma_data2"+lTag,"sigma_data2"+lTag,10.,2.,20.)
+        #pGaus_data2         = r.RooGaussian("gaus_data2"+lTag,"gaus_data2%s"+lTag,lVar,lMean_Gaus_data2,lSigma_Gaus_data2)
 
-        if iModel == "PolyGaus_st_data":
-            lMean_Gaus_data      = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,120.,190.)
-            lSigma_Gaus_data     = r.RooRealVar("sigma_data"+lTag,"sigma_data"+lTag,15.,0.,100.)
-            pGaus_data           = r.RooGaussian("gaus_data"+lTag,"gaus_data%s"+lTag,lVar,lMean_Gaus_data,lSigma_Gaus_data)
-            #lMean2_Gaus_data      = r.RooRealVar("mean2_data"+lTag,"mean2_data"+lTag,150.,140.,175.)
-            #lSigma2_Gaus_data     = r.RooRealVar("sigma2_data"+lTag,"sigma2_data"+lTag,80.,40.,100.)
-            #pGaus2_data           = r.RooGaussian("gaus2_data"+lTag,"gaus2_data%s"+lTag,lVar,lMean2_Gaus_data,lSigma2_Gaus_data)
-            la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.003,-0.005,0.)
-            #la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.04,-.1,0.)
-            #la2_data             = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,0.1,0.,1.)
-            pPoly_data             = r.RooPolynomial("poly_data"+lTag,"poly_data%s"+lTag,lVar,r.RooArgList(la1_data),1)
-            #pPoly_data           = r.RooExponential("poly_data"+lTag,"poly_data%s"+lTag,lVar,la1_data)
-            lModelPdf            = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_data,pPoly_data),r.RooArgList(pVarHigh))
+        pErfExp_data        = r.RooErfExpPdf("erfExp_data"+lTag,"erfExp_data%s"+lTag,lVar,lC_ErfExp_data,lOffSet_ErfExp_data,lWidth_ErfExp_data);
+        #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_data,pGaus_data,pGaus_data2),r.RooArgList(pVarHigh,pVarHigh1));
+        lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_data,pGaus_data),r.RooArgList(pVarHigh));
 
-        if iModel == "ErfExpGaus_st_mc":
-            lC_ErfExp_mc      = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.05,-0.2,0.0)
-            lOffSet_ErfExp_mc  = r.RooRealVar("offset_mc"+lTag,"offset_mc"+lTag,175.,140.,300.)
-            lWidth_ErfExp_mc   = r.RooRealVar("width_mc"+lTag,"width_mc"+lTag,30.,10.,300.)
-            lMean_Gaus_mc      = r.RooRealVar("mean_mc"+lTag,"mean_mc"+lTag,175.,140.,200.)
-            lSigma_Gaus_mc     = r.RooRealVar("sigma_mc"+lTag,"sigma_mc"+lTag,7.,0.,40.)
-            pGaus_mc           = r.RooGaussian("gaus_mc"+lTag,"gaus_mc%s"+lTag,lVar,lMean_Gaus_mc,lSigma_Gaus_mc)
-            #add W 
-            #lMean_Gaus_mc2    = r.RooRealVar("mean_mc2"+lTag,"mean_mc2"+lTag,85.,75.,95.)
-            #lSigma_Gaus_mc2   = r.RooRealVar("sigma_mc2"+lTag,"sigma_mc2"+lTag,10.,2.,20.)
-            #pGaus_mc2         = r.RooGaussian("gaus_mc2"+lTag,"gaus_mc2%s"+lTag,lVar,lMean_Gaus_mc2,lSigma_Gaus_mc2)
+    if iModel == "GausErfExp_ttbar":
+        lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-10,10.)
+        lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,0.,200.)
+        lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,30.,0.,200.)
+        lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,175.,130.,200.)
+        lSigma_Gaus    = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,7.,0.,40.)
+        pErfExp        = r.RooErfExpPdf("erfExp_"+lTag,"erfExp_%s"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+        pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
+        pVarFrac       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
+        lC_ErfExp.setConstant(r.kTRUE);
+        lOffSet_ErfExp.setConstant(r.kTRUE);
+        lWidth_ErfExp.setConstant(r.kTRUE);
+        pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
+        pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+        lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pErfExp),r.RooArgList(pVarHigh),1);
+        
+    if iModel == "ErfExp_st_mc":
+        lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
+        lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
+        lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,50.,20.,1000.)
+        pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+        lModelPdf      = pErfExp
+        
+    if iModel == "ErfExp_st_data":
+        lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
+        lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
+        lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,50.,20.,1000.)
+        pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+        lModelPdf      = pErfExp
+        
+    if iModel == "GausGaus_ttbar_mc":
+        #narrow component
+        lMean_Gaus1_mc     = r.RooRealVar("mean1_mc"+lTag,"mean1_mc"+lTag,175.,140.,200.)
+        lSigma_Gaus1_mc    = r.RooRealVar("sigma1_mc"+lTag,"sigma1_mc"+lTag,7.,0.,40.)
+        pGaus1_mc          = r.RooGaussian("gaus1_mc"+lTag,"gaus1_mc%s"+lTag,lVar,lMean_Gaus1_mc,lSigma_Gaus1_mc)
+        pVarFrac1_mc       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
+        pGaus1_mc          = r.RooGaussian("gaus1_mc"+lTag,"gaus1_mc%s"+lTag,lVar,lMean_Gaus1_mc,lSigma_Gaus1_mc)
+        #broad component
+        lMean_Gaus2_mc     = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,120.,100.,175.) #offset left
+        lSigma_Gaus2_mc    = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,60.,0.,80.) #wider
+        pGaus2_mc          = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean_Gaus2_mc,lSigma_Gaus2_mc)
+        #W
+        lMean_Gaus3_mc     = r.RooRealVar("mean3_mc"+lTag,"mean3_mc"+lTag,80.,75.,85.)
+        lSigma_Gaus3_mc    = r.RooRealVar("sigma3_mc"+lTag,"sigma3_mc"+lTag,10.,0.,20.)
+        pGaus3_mc          = r.RooGaussian("gaus3_mc"+lTag,"gaus3_mc%s"+lTag,lVar,lMean_Gaus3_mc,lSigma_Gaus3_mc)
+        
+        #try poly
+        a1_mc              = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,0.004,0.,0.007)
+        a2_mc              = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,-1e-6,-1e-9,0.)
+        a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-7,0.,0.005)
+        lExp2_mc             = r.RooPolynomial("lExp2_mc"+lTag,"lExp2_mc"+lTag,lVar,r.RooArgList(a1_mc,a2_mc,a3_mc),1)
+        
+        #a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-8,-0.005,0.005)
+        #lPoly_mc           = r.RooPolynomial("lPoly_mc"+lTag,"lPoly_mc"+lTag,lVar, r.RooArgList(a1_mc,a2_mc),1)
+        
+        #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarFrac1),1);
+        #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1_mc,pGaus2_mc),r.RooArgList(pVarHigh));
+        lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1_mc,lExp2_mc),r.RooArgList(pVarHigh))
 
-            pErfExp_mc         = r.RooErfExpPdf("erfExp_mc"+lTag,"erfExp_mc%s"+lTag,lVar,lC_ErfExp_mc,lOffSet_ErfExp_mc,lWidth_ErfExp_mc);
-            #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_mc,pGaus_mc,pGaus_mc2),r.RooArgList(pVarHigh,pVarHigh1));
-            lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_mc,pGaus_mc),r.RooArgList(pVarHigh));
-        if iModel == "ErfExpGaus_st_data":
-            lC_ErfExp_data      = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.05,-0.2,0.0)
-            lOffSet_ErfExp_data = r.RooRealVar("offset_data"+lTag,"offset_data"+lTag,175.,140.,300.)
-            lWidth_ErfExp_data  = r.RooRealVar("width_data"+lTag,"width_data"+lTag,30.,10.,300.)
-            lMean_Gaus_data     = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,140.,200.)
-            lSigma_Gaus_data    = r.RooRealVar("sigma_data"+lTag,"sigma_data"+lTag,7.,0.,40.)
-            pGaus_data          = r.RooGaussian("gaus_data"+lTag,"gaus_data%s"+lTag,lVar,lMean_Gaus_data,lSigma_Gaus_data)
-            #add W 
-            #lMean_Gaus_data2    = r.RooRealVar("mean_data2"+lTag,"mean_data2"+lTag,85.,75.,95.)
-            #lSigma_Gaus_data2   = r.RooRealVar("sigma_data2"+lTag,"sigma_data2"+lTag,10.,2.,20.)
-            #pGaus_data2         = r.RooGaussian("gaus_data2"+lTag,"gaus_data2%s"+lTag,lVar,lMean_Gaus_data2,lSigma_Gaus_data2)
+    if iModel == "GausGaus_ttbar_data":
+        #narrow component
+        lMean_Gaus1_data     = r.RooRealVar("mean1_data"+lTag,"mean1_data"+lTag,175.,140.,200.)
+        lSigma_Gaus1_data    = r.RooRealVar("sigma1_data"+lTag,"sigma1_data"+lTag,7.,0.,30.)
+        pGaus1_data          = r.RooGaussian("gaus1_data"+lTag,"gaus1_data%s"+lTag,lVar,lMean_Gaus1_data,lSigma_Gaus1_data)
+        pVarFrac1_data       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
+        pGaus1_data          = r.RooGaussian("gaus1_data"+lTag,"gaus1_data%s"+lTag,lVar,lMean_Gaus1_data,lSigma_Gaus1_data)
+        #broad component
+        lMean_Gaus2_data     = r.RooRealVar("mean2_data"+lTag,"mean2_data"+lTag,120.,100.,175.) #offset left
+        lSigma_Gaus2_data    = r.RooRealVar("sigma2_data"+lTag,"sigma2_data"+lTag,60.,0.,80.) #wider
+        pGaus2_data          = r.RooGaussian("gaus2_data"+lTag,"gaus2_data%s"+lTag,lVar,lMean_Gaus2_data,lSigma_Gaus2_data)
+        #W
+        lMean_Gaus3_data     = r.RooRealVar("mean3_data"+lTag,"mean3_data"+lTag,80.,75.,85.)
+        lSigma_Gaus3_data    = r.RooRealVar("sigma3_data"+lTag,"sigma3_data"+lTag,10.,0.,20.)
+        pGaus3_data          = r.RooGaussian("gaus3_data"+lTag,"gaus3_data%s"+lTag,lVar,lMean_Gaus3_data,lSigma_Gaus3_data)
+        #try poly
+        a1_data              = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,0.004,0.,0.007)
+        a2_data              = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,-1e-6,-1e-9,0.)  
+        a3_data              = r.RooRealVar("a3_data"+lTag,"a3_data"+lTag,1e-7,0.,0.005)
+        lPoly_data           = r.RooPolynomial("lPoly_data"+lTag,"lPoly_data"+lTag,lVar,r.RooArgList(a1_data,a2_data,a3_data),1)
 
-            pErfExp_data        = r.RooErfExpPdf("erfExp_data"+lTag,"erfExp_data%s"+lTag,lVar,lC_ErfExp_data,lOffSet_ErfExp_data,lWidth_ErfExp_data);
-            #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_data,pGaus_data,pGaus_data2),r.RooArgList(pVarHigh,pVarHigh1));
-            lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_data,pGaus_data),r.RooArgList(pVarHigh));
-        if iModel == "GausErfExp_ttbar":
-            lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-10,10.)
-            lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,0.,200.)
-            lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,30.,0.,200.)
-            lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,175.,130.,200.)
-            lSigma_Gaus    = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,7.,0.,40.)
-            pErfExp        = r.RooErfExpPdf("erfExp_"+lTag,"erfExp_%s"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-            pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
-            pVarFrac       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
-            lC_ErfExp.setConstant(r.kTRUE);
-            lOffSet_ErfExp.setConstant(r.kTRUE);
-            lWidth_ErfExp.setConstant(r.kTRUE);
-            pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
-            pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-            lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pErfExp),r.RooArgList(pVarHigh),1);
-    
-        if iModel == "ErfExp_st_mc":
-            lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
-            lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
-            lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,50.,20.,1000.)
-            pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-            lModelPdf      = pErfExp
+        #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarFrac1),1);
+        #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1_data,pGaus2_data),r.RooArgList(pVarHigh));
+        lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1_data,lPoly_data),r.RooArgList(pVarHigh))
 
-        if iModel == "ErfExp_st_data":
-            lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
-            lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
-            lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,50.,20.,1000.)
-            pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-            lModelPdf      = pErfExp
-
-        if iModel == "GausGaus_ttbar_mc":
-            #narrow component
-            lMean_Gaus1_mc     = r.RooRealVar("mean1_mc"+lTag,"mean1_mc"+lTag,175.,140.,200.)
-            lSigma_Gaus1_mc    = r.RooRealVar("sigma1_mc"+lTag,"sigma1_mc"+lTag,7.,0.,40.)
-            pGaus1_mc          = r.RooGaussian("gaus1_mc"+lTag,"gaus1_mc%s"+lTag,lVar,lMean_Gaus1_mc,lSigma_Gaus1_mc)
-            pVarFrac1_mc       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
-            pGaus1_mc          = r.RooGaussian("gaus1_mc"+lTag,"gaus1_mc%s"+lTag,lVar,lMean_Gaus1_mc,lSigma_Gaus1_mc)
-            #broad component
-            lMean_Gaus2_mc     = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,120.,100.,175.) #offset left
-            lSigma_Gaus2_mc    = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,60.,0.,80.) #wider
-            pGaus2_mc          = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean_Gaus2_mc,lSigma_Gaus2_mc)
-            #W
-            lMean_Gaus3_mc     = r.RooRealVar("mean3_mc"+lTag,"mean3_mc"+lTag,80.,75.,85.)
-            lSigma_Gaus3_mc    = r.RooRealVar("sigma3_mc"+lTag,"sigma3_mc"+lTag,10.,0.,20.)
-            pGaus3_mc          = r.RooGaussian("gaus3_mc"+lTag,"gaus3_mc%s"+lTag,lVar,lMean_Gaus3_mc,lSigma_Gaus3_mc)
-   
-            #try poly
-            a1_mc              = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,0.004,0.,0.007)
-            a2_mc              = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,-1e-6,-1e-9,0.)
-            a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-7,0.,0.005)
-            lExp2_mc             = r.RooPolynomial("lExp2_mc"+lTag,"lExp2_mc"+lTag,lVar,r.RooArgList(a1_mc,a2_mc,a3_mc),1)
- 
-            #a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-8,-0.005,0.005)
-            #lPoly_mc           = r.RooPolynomial("lPoly_mc"+lTag,"lPoly_mc"+lTag,lVar, r.RooArgList(a1_mc,a2_mc),1)
-
-            #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarFrac1),1);
-            #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1_mc,pGaus2_mc),r.RooArgList(pVarHigh));
-            lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1_mc,lExp2_mc),r.RooArgList(pVarHigh))
-
-        if iModel == "GausGaus_ttbar_data":
-            #narrow component
-            lMean_Gaus1_data     = r.RooRealVar("mean1_data"+lTag,"mean1_data"+lTag,175.,140.,200.)
-            lSigma_Gaus1_data    = r.RooRealVar("sigma1_data"+lTag,"sigma1_data"+lTag,7.,0.,30.)
-            pGaus1_data          = r.RooGaussian("gaus1_data"+lTag,"gaus1_data%s"+lTag,lVar,lMean_Gaus1_data,lSigma_Gaus1_data)
-            pVarFrac1_data       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
-            pGaus1_data          = r.RooGaussian("gaus1_data"+lTag,"gaus1_data%s"+lTag,lVar,lMean_Gaus1_data,lSigma_Gaus1_data)
-            #broad component
-            lMean_Gaus2_data     = r.RooRealVar("mean2_data"+lTag,"mean2_data"+lTag,120.,100.,175.) #offset left
-            lSigma_Gaus2_data    = r.RooRealVar("sigma2_data"+lTag,"sigma2_data"+lTag,60.,0.,80.) #wider
-            pGaus2_data          = r.RooGaussian("gaus2_data"+lTag,"gaus2_data%s"+lTag,lVar,lMean_Gaus2_data,lSigma_Gaus2_data)
-            #W
-            lMean_Gaus3_data     = r.RooRealVar("mean3_data"+lTag,"mean3_data"+lTag,80.,75.,85.)
-            lSigma_Gaus3_data    = r.RooRealVar("sigma3_data"+lTag,"sigma3_data"+lTag,10.,0.,20.)
-            pGaus3_data          = r.RooGaussian("gaus3_data"+lTag,"gaus3_data%s"+lTag,lVar,lMean_Gaus3_data,lSigma_Gaus3_data)
-            #try poly
-            a1_data              = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,0.004,0.,0.007)
-            a2_data              = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,-1e-6,-1e-9,0.)  
-            a3_data              = r.RooRealVar("a3_data"+lTag,"a3_data"+lTag,1e-7,0.,0.005)
-            lPoly_data           = r.RooPolynomial("lPoly_data"+lTag,"lPoly_data"+lTag,lVar,r.RooArgList(a1_data,a2_data,a3_data),1)
-
-            #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarFrac1),1);
-            #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1_data,pGaus2_data),r.RooArgList(pVarHigh));
-            lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1_data,lPoly_data),r.RooArgList(pVarHigh))
-
-        getattr(iWorkspace,"import")(lModelPdf,r.RooFit.RecycleConflictNodes())
-        return iWorkspace.pdf("model_pdf_%s"%iLabel)
+    getattr(iWorkspace,"import")(lModelPdf,r.RooFit.RecycleConflictNodes())
+    return iWorkspace.pdf("model_pdf_%s"%iLabel)
 
 # return RooExtendPdf
 def makeModel(iWorkspace,iLabel,iModel):
