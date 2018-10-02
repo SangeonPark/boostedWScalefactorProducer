@@ -33,8 +33,8 @@ fPDFs = {
          #'wlnu_data': 'Exp_data',
          #'vv':   '',
          #'st_mc':    'GausErfExp_ttbar',
-         'st_mc':   'ErfExp_st_mc',
-         'st_data':   'ErfExp_st_data',
+         'st_mc':   'PolyGaus_st_mc',
+         'st_data':   'PolyGaus_st_data',
          #'tt':   'GausErfExp_ttbar',
          'tt_mc':    'GausGaus_ttbar_mc',
          'tt_data':    'GausGaus_ttbar_data',
@@ -172,12 +172,12 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
             lMean2_Gaus_mc      = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,150.,140.,175.)
             lSigma2_Gaus_mc     = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,80.,40.,100.)
             pGaus2_mc           = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean2_Gaus_mc,lSigma2_Gaus_mc)
-            la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.003,-0.05,0.)
+            la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.003,-0.005,0.)
             #la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.04,-.1,0.)
             #la2_mc             = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,0.1,0.,1.)
-            pPoly_mc           = r.RooExponential("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,la1_mc)
-            #pPoly_mc           = r.RooPolynomial("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,r.RooArgList(la1_mc),1)
-            lModelPdf          = pPoly_mc # r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pPoly_mc))
+            #pPoly_mc           = r.RooExponential("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,la1_mc)
+            pPoly_mc           = r.RooPolynomial("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,r.RooArgList(la1_mc),1)
+            lModelPdf          = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_mc,pPoly_mc),r.RooArgList(pVarHigh))
 
         if iModel == "PolyGaus_st_data":
             lMean_Gaus_data      = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,120.,190.)
@@ -186,12 +186,12 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
             #lMean2_Gaus_data      = r.RooRealVar("mean2_data"+lTag,"mean2_data"+lTag,150.,140.,175.)
             #lSigma2_Gaus_data     = r.RooRealVar("sigma2_data"+lTag,"sigma2_data"+lTag,80.,40.,100.)
             #pGaus2_data           = r.RooGaussian("gaus2_data"+lTag,"gaus2_data%s"+lTag,lVar,lMean2_Gaus_data,lSigma2_Gaus_data)
-            la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.003,-0.05,0.)
+            la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.003,-0.005,0.)
             #la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.04,-.1,0.)
             #la2_data             = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,0.1,0.,1.)
-            #pPoly_data             = r.RooPolynomial("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,r.RooArgList(la1_data),1)
-            pPoly_data           = r.RooExponential("poly_data"+lTag,"poly_data%s"+lTag,lVar,la1_data)
-            lModelPdf            = pPoly_data #r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pPoly_data))
+            pPoly_data             = r.RooPolynomial("poly_data"+lTag,"poly_data%s"+lTag,lVar,r.RooArgList(la1_data),1)
+            #pPoly_data           = r.RooExponential("poly_data"+lTag,"poly_data%s"+lTag,lVar,la1_data)
+            lModelPdf            = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_data,pPoly_data),r.RooArgList(pVarHigh))
 
         if iModel == "ErfExpGaus_st_mc":
             lC_ErfExp_mc      = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.05,-0.2,0.0)
@@ -273,7 +273,7 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
             a1_mc              = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,0.004,0.,0.007)
             a2_mc              = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,-1e-6,-1e-9,0.)
             a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-7,0.,0.005)
-            lExp2_mc             = r.RooPolynomial("lExp2_mc"+lTag,"lExp2_mc"+lTag,lVar,r.RooArgList(a2_mc,a3_mc),2)
+            lExp2_mc             = r.RooPolynomial("lExp2_mc"+lTag,"lExp2_mc"+lTag,lVar,r.RooArgList(a1_mc,a2_mc,a3_mc),1)
  
             #a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-8,-0.005,0.005)
             #lPoly_mc           = r.RooPolynomial("lPoly_mc"+lTag,"lPoly_mc"+lTag,lVar, r.RooArgList(a1_mc,a2_mc),1)
@@ -301,7 +301,7 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
             a1_data              = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,0.004,0.,0.007)
             a2_data              = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,-1e-6,-1e-9,0.)  
             a3_data              = r.RooRealVar("a3_data"+lTag,"a3_data"+lTag,1e-7,0.,0.005)
-            lPoly_data           = r.RooPolynomial("lPoly_data"+lTag,"lPoly_data"+lTag,lVar,r.RooArgList(a2_data,a3_data),2)
+            lPoly_data           = r.RooPolynomial("lPoly_data"+lTag,"lPoly_data"+lTag,lVar,r.RooArgList(a1_data,a2_data,a3_data),1)
 
             #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarFrac1),1);
             #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1_data,pGaus2_data),r.RooArgList(pVarHigh));
@@ -426,7 +426,6 @@ class TopPeak():
     def getModel(self, iLabel):
         print 'getting model for ', iLabel
         lModel    = self._lW.pdf("model_"+iLabel)
-        print 'model made'
         lModel.Print()
         self._lW.data(iLabel+"_D").Print()
         # lPars     = lModel.getParameters(self._lW.data(iLabel+"_D"))
@@ -470,7 +469,7 @@ class TopPeak():
         for iLabel in ['st_mc','st_data','tt_mc','tt_data']:
             self._lModels[iLabel] = self.getModel(iLabel)
             self._lModels[iLabel].Print()
-
+        '''
         # self._lModels['Mc']  = r.RooAddPdf("model_mc","model_mc",
         #                                    r.RooArgList(self._lHPdfs['tt'],self._lHPdfs['st'],self._lHPdfs['wlnu']),
         #                                    r.RooArgList(self._lNPdfs['st'],self._lNPdfs['wlnu']))
@@ -512,7 +511,7 @@ class TopPeak():
 
         # draw data and mc
         drawDataMc(lVar,lSData,[self._lModels['Data']],lSMc,[self._lModels['Mc']],pRooFitResult_Mc,pRooFitResult_Data,params,"data_mc")
-
+        '''
         # write workspace
         self._lW.writeToFile(fOutput)
 
