@@ -32,18 +32,18 @@ fFiles = {'data': 'Data',
           }
 
 fPDFs = {
-         'wlnu_mc':       'Exp_mc',
-         'wlnu_data':     'Exp_data',
+         #'wlnu_mc':       'Exp_mc',
+         #'wlnu_data':     'Exp_data',
          #'st_mc':        'GausErfExp_tt',
          'st_mc':         'PolyGaus_st_mc',
          'st_data':       'PolyGaus_st_data',
-         'tt':            'GausErfExp_tt',
-         'tt_mc':         'GausGaus_tt_mc',
-         'tt_data':       'GausGaus_tt_data',
-         'tt_fakeW_mc':   'GausErfExp_tt_mc',
-         'tt_realW_mc':   'GausGaus_tt_mc',
-         'tt_fakeW_data': 'GausErfExp_tt_data',
-         'tt_realW_data': 'GausGaus_tt_data'
+         #'tt':            'GausErfExp_tt',
+         'tt_mc':         'GausErfExp_tt_mc',
+         'tt_data':       'GausErfExp_tt_data',
+         #'tt_fakeW_mc':   'GausErfExp_tt_mc',
+         #'tt_realW_mc':   'GausGaus_tt_mc',
+         #'tt_fakeW_data': 'GausErfExp_tt_data',
+         #'tt_realW_data': 'GausGaus_tt_data'
          }
 
 r.gSystem.Load("./PDFs/HWWLVJRooPdfs_cxx.so")
@@ -225,7 +225,9 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
         pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pErfExp),r.RooArgList(pVarHigh),1);
-        
+        addConstraint(iWorkspace,lMean_Gaus,175,3,lConstraints)
+        addConstraint(iWorkspace,lSigma_Gaus,7,2,lConstraints)
+ 
     if iModel == "ErfExp_st_mc":
         lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
         lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
@@ -404,10 +406,10 @@ class TopPeak():
             lMatched = 0
             jmatched = getattr(lTree,"Puppijet0_vMatching");
             jhadronic = getattr(lTree,"Puppijet0_isHadronicV");
-            if 'realW' in iLabel:
-                print jhadronic,jmatched
-            if jhadronic == 1.0 and jmatched < 1. and jmatched > 0.:
-                lMatched == 1;
+            #if 'realW' in iLabel:
+                #print jhadronic,jmatched
+            #if jhadronic == 1.0 and jmatched < 1. and jmatched > 0.:
+                #lMatched == 1;
             if 'realW' in iLabel and lMatched == 0: continue
             if 'fakeW' in iLabel and lMatched == 1: continue
             lMass = getattr(lTree,fVar) 
@@ -468,11 +470,10 @@ class TopPeak():
                     pPdfConstraints_Data.add(self._lW.pdf(self._lConstraints[iLabel][i0]))
         pPdfConstraints_Mc.Print()
         pPdfConstraints_Data.Print()
-
         # models
         self._lModels['Mc'] = r.RooAddPdf("model_mc","model_mc",r.RooArgList(self._lModels['st_mc'], self._lModels['tt_mc']))
         self._lModels['Data'] = r.RooAddPdf("model_data","model_data",r.RooArgList(self._lModels['st_data'],self._lModels['tt_data']))
-
+        
         # fit to mc
         pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Mc),r.RooFit.Verbose(r.kFALSE))
         pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Mc))
@@ -494,13 +495,13 @@ class TopPeak():
         print x2.Print("v")
 
         params = {}
-        params["mc_mean_val"] = x1.find("mean1_mcGausGaus_tt_mc_tt_mc").getVal()
-        params["mc_mean_err"] = x1.find("mean1_mcGausGaus_tt_mc_tt_mc").getError()
-        params["mc_sigma_val"]   = x1.find("sigma1_mcGausGaus_tt_mc_tt_mc").getVal() 
-        params["mc_sigma_err"]   = x1.find("sigma1_mcGausGaus_tt_mc_tt_mc").getError()
+        params["mc_mean_val"]      = x1.find("mean1_mcGausGaus_tt_mc_tt_mc").getVal()
+        params["mc_mean_err"] 	   = x1.find("mean1_mcGausGaus_tt_mc_tt_mc").getError()
+        params["mc_sigma_val"]     = x1.find("sigma1_mcGausGaus_tt_mc_tt_mc").getVal() 
+        params["mc_sigma_err"]     = x1.find("sigma1_mcGausGaus_tt_mc_tt_mc").getError()
 
-        params["data_mean_val"] = x2.find("mean1_dataGausGaus_tt_data_tt_data").getVal()
-        params["data_mean_err"] = x2.find("mean1_dataGausGaus_tt_data_tt_data").getError()
+        params["data_mean_val"]    = x2.find("mean1_dataGausGaus_tt_data_tt_data").getVal()
+        params["data_mean_err"]    = x2.find("mean1_dataGausGaus_tt_data_tt_data").getError()
         params["data_sigma_val"]   = x2.find("sigma1_dataGausGaus_tt_data_tt_data").getVal()
         params["data_sigma_err"]   = x2.find("sigma1_dataGausGaus_tt_data_tt_data").getError()
 
@@ -508,7 +509,6 @@ class TopPeak():
 
         # draw data and mc
         drawDataMc(lVar,lSData,[self._lModels['Data']],lSMc,[self._lModels['Mc']],pRooFitResult_Mc,pRooFitResult_Data,params,"data_mc")
-
         # write workspace
         self._lW.writeToFile(fOutput)
 
