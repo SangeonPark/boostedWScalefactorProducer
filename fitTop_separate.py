@@ -24,22 +24,26 @@ fFiles = {'data': 'Data',
           'st_data':   'ST',
           'tt_mc':   'TT',
           'tt_data':   'TT',
-          #'tt_fakeW': 'TT',
-          #'tt_realW': 'TT',
-          'mc':   'PseudoData'}
+          #'tt_fakeW_mc': 'TT',
+          #'tt_realW_mc': 'TT',
+          #'tt_fakeW_data': 'TT',
+          #'tt_realW_data': 'TT',
+          'mc': 'PseudoData'
+          }
 
 fPDFs = {
-         #'wlnu_mc': 'Exp_mc',
-         #'wlnu_data': 'Exp_data',
-         #'vv':   '',
-         #'st_mc':    'GausErfExp_ttbar',
-         'st_mc':   'PolyGaus_st_mc',
-         'st_data':   'PolyGaus_st_data',
-         #'tt':   'GausErfExp_ttbar',
-         'tt_mc':    'GausGaus_ttbar_mc',
-         'tt_data':    'GausGaus_ttbar_data',
-         #'tt_fakeW': 'GausGaus_ttbar', #what is the real shape??????
-         #'tt_realW': 'GausGaus_ttbar' #what is the real shape??????
+         'wlnu_mc':       'Exp_mc',
+         'wlnu_data':     'Exp_data',
+         #'st_mc':        'GausErfExp_tt',
+         'st_mc':         'PolyGaus_st_mc',
+         'st_data':       'PolyGaus_st_data',
+         'tt':            'GausErfExp_tt',
+         'tt_mc':         'GausGaus_tt_mc',
+         'tt_data':       'GausGaus_tt_data',
+         'tt_fakeW_mc':   'GausErfExp_tt_mc',
+         'tt_realW_mc':   'GausGaus_tt_mc',
+         'tt_fakeW_data': 'GausErfExp_tt_data',
+         'tt_realW_data': 'GausGaus_tt_data'
          }
 
 r.gSystem.Load("./PDFs/HWWLVJRooPdfs_cxx.so")
@@ -147,12 +151,16 @@ def getPull(iVar,iPlot):
     return pPull
 
 # add gaussian constraint                                                                                                   
-def addConstraint(iVar,iMean,iSigma,iList):
+def addConstraint(iWorkspace,iVar,iMean,iSigma,iList):
+    print 'Adding gaussian constraint to %s'%iVar.GetName()
     lMean = r.RooRealVar("%s_mean"%iVar.GetName(),"%s_mean"%iVar.GetName(),iMean);
     lSigma = r.RooRealVar("%s_sigma"%iVar.GetName(),"%s_sigma"%iVar.GetName(),iSigma);
     lConstraint = r.RooGaussian("constraint_pdf_%s"%iVar.GetName(),"constraint_pdf_%s"%iVar.GetName(),iVar,lMean,lSigma)
+    print lConstraint,lConstraint.GetName()
+    lConstraint.Print()
     iList.append(lConstraint.GetName())
-    return lConstraint
+    getattr(iWorkspace,"import")(lConstraint,r.RooFit.RecycleConflictNodes())
+
 
 # make Pdf from model, probably should put parameters in dictionary
 def makePdf(iWorkspace,iLabel,iModel,iMc=False):
@@ -162,76 +170,47 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
     lTag = "%s_%s"%(iModel,iLabel)
     pVarHigh       = r.RooRealVar("%sHi_%s"%(lVar.GetName(),lTag),"%sHi_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
     pVarHigh1      = r.RooRealVar("%sHi1_%s"%(lVar.GetName(),lTag),"%sHi1_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
-    
+    lConstraints = []
+
     if iModel == "Exp_mc":
-        lC_Exp_mc         = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.03,-2.,0.05)
-        lModelPdf      = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_mc);
+        lC_Exp_mc        = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.03,-2.,0.05)
+        lModelPdf = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_mc);
         
     if iModel == "Exp_data":
-        lC_Exp_data         = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.03,-2.,0.05)
-        lModelPdf      = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_data);
+        lC_Exp_data      = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.03,-2.,0.05)
+        lModelPdf = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_data);
         
-    if iModel == "PolyGaus_st_mc":
-        lMean_Gaus_mc      = r.RooRealVar("mean_mc"+lTag,"mean_mc"+lTag,175.,120.,190.)
-        lSigma_Gaus_mc     = r.RooRealVar("sigma_mc"+lTag,"sigma_mc"+lTag,15.,0.,100.)
-        pGaus_mc           = r.RooGaussian("gaus_mc"+lTag,"gaus_mc%s"+lTag,lVar,lMean_Gaus_mc,lSigma_Gaus_mc)
-        lMean2_Gaus_mc      = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,150.,140.,175.)
-        lSigma2_Gaus_mc     = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,80.,40.,100.)
-        pGaus2_mc           = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean2_Gaus_mc,lSigma2_Gaus_mc)
-        la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.003,-0.005,0.)
-        #la1_mc             = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,-0.04,-.1,0.)
-        #la2_mc             = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,0.1,0.,1.)
-        #pPoly_mc           = r.RooExponential("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,la1_mc)
-        pPoly_mc           = r.RooPolynomial("poly_mc"+lTag,"poly_mc%s"+lTag,lVar,r.RooArgList(la1_mc),1)
-        lModelPdf          = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_mc,pPoly_mc),r.RooArgList(pVarHigh))
+    if "PolyGaus_st" in iModel:
+        lMean_Gaus       = r.RooRealVar("mean"+lTag,"mean"+lTag,175.,120.,190.)
+        lSigma_Gaus      = r.RooRealVar("sigma"+lTag,"sigma"+lTag,15.,0.,100.)
+        pGaus            = r.RooGaussian("gaus"+lTag,"gaus"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
+        lMean2_Gaus      = r.RooRealVar("mean2"+lTag,"mean2"+lTag,150.,140.,175.)
+        lSigma2_Gaus     = r.RooRealVar("sigma2"+lTag,"sigma2"+lTag,80.,40.,100.)
+        pGaus2           = r.RooGaussian("gaus2"+lTag,"gaus2"+lTag,lVar,lMean2_Gaus,lSigma2_Gaus)
+        la1              = r.RooRealVar("a1"+lTag,"a1"+lTag,-0.003,-0.005,0.)
+        #la1             = r.RooRealVar("a1"+lTag,"a1"+lTag,-0.04,-.1,0.)
+        #la2             = r.RooRealVar("a2"+lTag,"a2"+lTag,0.1,0.,1.)
+        #pPoly           = r.RooExponential("poly"+lTag,"poly"+lTag,lVar,la1)
+        pPoly            = r.RooPolynomial("poly"+lTag,"poly"+lTag,lVar,r.RooArgList(la1),1)
+        lModelPdf = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pPoly),r.RooArgList(pVarHigh))
 
-    if iModel == "PolyGaus_st_data":
-        lMean_Gaus_data      = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,120.,190.)
-        lSigma_Gaus_data     = r.RooRealVar("sigma_data"+lTag,"sigma_data"+lTag,15.,0.,100.)
-        pGaus_data           = r.RooGaussian("gaus_data"+lTag,"gaus_data%s"+lTag,lVar,lMean_Gaus_data,lSigma_Gaus_data)
-        #lMean2_Gaus_data      = r.RooRealVar("mean2_data"+lTag,"mean2_data"+lTag,150.,140.,175.)
-        #lSigma2_Gaus_data     = r.RooRealVar("sigma2_data"+lTag,"sigma2_data"+lTag,80.,40.,100.)
-        #pGaus2_data           = r.RooGaussian("gaus2_data"+lTag,"gaus2_data%s"+lTag,lVar,lMean2_Gaus_data,lSigma2_Gaus_data)
-        la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.003,-0.005,0.)
-        #la1_data             = r.RooRealVar("a1_data"+lTag,"a1_data"+lTag,-0.04,-.1,0.)
-        #la2_data             = r.RooRealVar("a2_data"+lTag,"a2_data"+lTag,0.1,0.,1.)
-        pPoly_data             = r.RooPolynomial("poly_data"+lTag,"poly_data%s"+lTag,lVar,r.RooArgList(la1_data),1)
-        #pPoly_data           = r.RooExponential("poly_data"+lTag,"poly_data%s"+lTag,lVar,la1_data)
-        lModelPdf            = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus_data,pPoly_data),r.RooArgList(pVarHigh))
-
-    if iModel == "ErfExpGaus_st_mc":
-        lC_ErfExp_mc      = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.05,-0.2,0.0)
-        lOffSet_ErfExp_mc  = r.RooRealVar("offset_mc"+lTag,"offset_mc"+lTag,175.,140.,300.)
-        lWidth_ErfExp_mc   = r.RooRealVar("width_mc"+lTag,"width_mc"+lTag,30.,10.,300.)
-        lMean_Gaus_mc      = r.RooRealVar("mean_mc"+lTag,"mean_mc"+lTag,175.,140.,200.)
-        lSigma_Gaus_mc     = r.RooRealVar("sigma_mc"+lTag,"sigma_mc"+lTag,7.,0.,40.)
-        pGaus_mc           = r.RooGaussian("gaus_mc"+lTag,"gaus_mc%s"+lTag,lVar,lMean_Gaus_mc,lSigma_Gaus_mc)
+    if "ErfExpGaus_st" in iModel:
+        lC_ErfExp        = r.RooRealVar("c"+lTag,"c"+lTag,-0.05,-0.2,0.0)
+        lOffSet_ErfExp   = r.RooRealVar("offset"+lTag,"offset"+lTag,175.,140.,300.)
+        lWidth_ErfExp    = r.RooRealVar("width"+lTag,"width"+lTag,30.,10.,300.)
+        lMean_Gaus       = r.RooRealVar("mean"+lTag,"mean"+lTag,175.,140.,200.)
+        lSigma_Gaus      = r.RooRealVar("sigma"+lTag,"sigma"+lTag,7.,0.,40.)
+        pGaus            = r.RooGaussian("gaus"+lTag,"gaus"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
         #add W 
-        #lMean_Gaus_mc2    = r.RooRealVar("mean_mc2"+lTag,"mean_mc2"+lTag,85.,75.,95.)
-        #lSigma_Gaus_mc2   = r.RooRealVar("sigma_mc2"+lTag,"sigma_mc2"+lTag,10.,2.,20.)
-        #pGaus_mc2         = r.RooGaussian("gaus_mc2"+lTag,"gaus_mc2%s"+lTag,lVar,lMean_Gaus_mc2,lSigma_Gaus_mc2)
+        #lMean_Gaus2     = r.RooRealVar("mean2"+lTag,"mean2"+lTag,85.,75.,95.)
+        #lSigma_Gaus2    = r.RooRealVar("sigma2"+lTag,"sigma2"+lTag,10.,2.,20.)
+        #pGaus2          = r.RooGaussian("gaus2"+lTag,"gaus2"+lTag,lVar,lMean_Gaus2,lSigma_Gaus2)
         
-        pErfExp_mc         = r.RooErfExpPdf("erfExp_mc"+lTag,"erfExp_mc%s"+lTag,lVar,lC_ErfExp_mc,lOffSet_ErfExp_mc,lWidth_ErfExp_mc);
-        #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_mc,pGaus_mc,pGaus_mc2),r.RooArgList(pVarHigh,pVarHigh1));
-        lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_mc,pGaus_mc),r.RooArgList(pVarHigh));
+        pErfExp          = r.RooErfExpPdf("erfExp"+lTag,"erfExp"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+        #lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp,pGaus,pGaus2),r.RooArgList(pVarHigh,pVarHigh1));
+        lModelPdf = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp,pGaus),r.RooArgList(pVarHigh));
 
-    if iModel == "ErfExpGaus_st_data":
-        lC_ErfExp_data      = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.05,-0.2,0.0)
-        lOffSet_ErfExp_data = r.RooRealVar("offset_data"+lTag,"offset_data"+lTag,175.,140.,300.)
-        lWidth_ErfExp_data  = r.RooRealVar("width_data"+lTag,"width_data"+lTag,30.,10.,300.)
-        lMean_Gaus_data     = r.RooRealVar("mean_data"+lTag,"mean_data"+lTag,175.,140.,200.)
-        lSigma_Gaus_data    = r.RooRealVar("sigma_data"+lTag,"sigma_data"+lTag,7.,0.,40.)
-        pGaus_data          = r.RooGaussian("gaus_data"+lTag,"gaus_data%s"+lTag,lVar,lMean_Gaus_data,lSigma_Gaus_data)
-        #add W 
-        #lMean_Gaus_data2    = r.RooRealVar("mean_data2"+lTag,"mean_data2"+lTag,85.,75.,95.)
-        #lSigma_Gaus_data2   = r.RooRealVar("sigma_data2"+lTag,"sigma_data2"+lTag,10.,2.,20.)
-        #pGaus_data2         = r.RooGaussian("gaus_data2"+lTag,"gaus_data2%s"+lTag,lVar,lMean_Gaus_data2,lSigma_Gaus_data2)
-
-        pErfExp_data        = r.RooErfExpPdf("erfExp_data"+lTag,"erfExp_data%s"+lTag,lVar,lC_ErfExp_data,lOffSet_ErfExp_data,lWidth_ErfExp_data);
-        #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_data,pGaus_data,pGaus_data2),r.RooArgList(pVarHigh,pVarHigh1));
-        lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp_data,pGaus_data),r.RooArgList(pVarHigh));
-
-    if iModel == "GausErfExp_ttbar":
+    if  "GausErfExp_tt" in iModel:
         lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-10,10.)
         lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,0.,200.)
         lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,30.,0.,200.)
@@ -240,9 +219,9 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         pErfExp        = r.RooErfExpPdf("erfExp_"+lTag,"erfExp_%s"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
         pVarFrac       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
-        lC_ErfExp.setConstant(r.kTRUE);
-        lOffSet_ErfExp.setConstant(r.kTRUE);
-        lWidth_ErfExp.setConstant(r.kTRUE);
+        #lC_ErfExp.setConstant(r.kTRUE);
+        #lOffSet_ErfExp.setConstant(r.kTRUE);
+        #lWidth_ErfExp.setConstant(r.kTRUE);
         pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
         pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pErfExp),r.RooArgList(pVarHigh),1);
@@ -251,46 +230,46 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
         lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
         lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,50.,20.,1000.)
-        pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-        lModelPdf      = pErfExp
+        lModelPdf = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         
     if iModel == "ErfExp_st_data":
         lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-5,1.)
         lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,50.,1000.)
         lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,50.,20.,1000.)
-        pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-        lModelPdf      = pErfExp
-        
-    if iModel == "GausGaus_ttbar_mc":
+        lModelPdf = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+
+    if "GausGaus_tt" in iModel:
         #narrow component
-        lMean_Gaus1_mc     = r.RooRealVar("mean1_mc"+lTag,"mean1_mc"+lTag,175.,140.,200.)
-        lSigma_Gaus1_mc    = r.RooRealVar("sigma1_mc"+lTag,"sigma1_mc"+lTag,7.,0.,40.)
-        pGaus1_mc          = r.RooGaussian("gaus1_mc"+lTag,"gaus1_mc%s"+lTag,lVar,lMean_Gaus1_mc,lSigma_Gaus1_mc)
-        pVarFrac1_mc       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
-        pGaus1_mc          = r.RooGaussian("gaus1_mc"+lTag,"gaus1_mc%s"+lTag,lVar,lMean_Gaus1_mc,lSigma_Gaus1_mc)
+        lMean_Gaus1     = r.RooRealVar("mean1"+lTag,"mean1"+lTag,175.,140.,200.)
+        lSigma_Gaus1    = r.RooRealVar("sigma1"+lTag,"sigma1"+lTag,7.,0.,40.)
+        pGaus1          = r.RooGaussian("gaus1"+lTag,"gaus1"+lTag,lVar,lMean_Gaus1,lSigma_Gaus1)
+        pVarFrac1       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
+        pGaus1          = r.RooGaussian("gaus1"+lTag,"gaus1"+lTag,lVar,lMean_Gaus1,lSigma_Gaus1)
         #broad component
-        lMean_Gaus2_mc     = r.RooRealVar("mean2_mc"+lTag,"mean2_mc"+lTag,120.,100.,175.) #offset left
-        lSigma_Gaus2_mc    = r.RooRealVar("sigma2_mc"+lTag,"sigma2_mc"+lTag,60.,0.,80.) #wider
-        pGaus2_mc          = r.RooGaussian("gaus2_mc"+lTag,"gaus2_mc%s"+lTag,lVar,lMean_Gaus2_mc,lSigma_Gaus2_mc)
+        lMean_Gaus2     = r.RooRealVar("mean2"+lTag,"mean2"+lTag,120.,100.,175.) #offset left
+        lSigma_Gaus2    = r.RooRealVar("sigma2"+lTag,"sigma2"+lTag,60.,0.,80.) #wider
+        pGaus2          = r.RooGaussian("gaus2"+lTag,"gaus2"+lTag,lVar,lMean_Gaus2,lSigma_Gaus2)
         #W
-        lMean_Gaus3_mc     = r.RooRealVar("mean3_mc"+lTag,"mean3_mc"+lTag,80.,75.,85.)
-        lSigma_Gaus3_mc    = r.RooRealVar("sigma3_mc"+lTag,"sigma3_mc"+lTag,10.,0.,20.)
-        pGaus3_mc          = r.RooGaussian("gaus3_mc"+lTag,"gaus3_mc%s"+lTag,lVar,lMean_Gaus3_mc,lSigma_Gaus3_mc)
+        lMean_Gaus3     = r.RooRealVar("mean3"+lTag,"mean3"+lTag,80.,75.,85.)
+        lSigma_Gaus3    = r.RooRealVar("sigma3"+lTag,"sigma3"+lTag,10.,0.,20.)
+        pGaus3          = r.RooGaussian("gaus3"+lTag,"gaus3"+lTag,lVar,lMean_Gaus3,lSigma_Gaus3)
         
         #try poly
-        a1_mc              = r.RooRealVar("a1_mc"+lTag,"a1_mc"+lTag,0.004,0.,0.007)
-        a2_mc              = r.RooRealVar("a2_mc"+lTag,"a2_mc"+lTag,-1e-6,-1e-9,0.)
-        a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-7,0.,0.005)
-        lExp2_mc             = r.RooPolynomial("lExp2_mc"+lTag,"lExp2_mc"+lTag,lVar,r.RooArgList(a1_mc,a2_mc,a3_mc),1)
+        a1              = r.RooRealVar("a1"+lTag,"a1"+lTag,0.004,0.,0.007)
+        a2              = r.RooRealVar("a2"+lTag,"a2"+lTag,-1e-6,-1e-9,0.)
+        a3              = r.RooRealVar("a3"+lTag,"a3"+lTag,1e-7,0.,0.005)
+        lExp2             = r.RooPolynomial("lExp2"+lTag,"lExp2"+lTag,lVar,r.RooArgList(a1,a2,a3),1)
         
-        #a3_mc              = r.RooRealVar("a3_mc"+lTag,"a3_mc"+lTag,1e-8,-0.005,0.005)
-        #lPoly_mc           = r.RooPolynomial("lPoly_mc"+lTag,"lPoly_mc"+lTag,lVar, r.RooArgList(a1_mc,a2_mc),1)
+        #a3              = r.RooRealVar("a3"+lTag,"a3"+lTag,1e-8,-0.005,0.005)
+        #lPoly           = r.RooPolynomial("lPoly"+lTag,"lPoly"+lTag,lVar, r.RooArgList(a1,a2),1)
         
         #lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarFrac1),1);
-        #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1_mc,pGaus2_mc),r.RooArgList(pVarHigh));
-        lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1_mc,lExp2_mc),r.RooArgList(pVarHigh))
+        #lModelPdf1      = r.RooAddPdf("model_pdf1_%s"%iLabel,"model_pdf1_%s"%iLabel,r.RooArgList(pGaus1,pGaus2),r.RooArgList(pVarHigh));
+        addConstraint(iWorkspace,lMean_Gaus1,175,3,lConstraints)
+        addConstraint(iWorkspace,lSigma_Gaus1,7,2,lConstraints)
+        lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1,lExp2),r.RooArgList(pVarHigh))
 
-    if iModel == "GausGaus_ttbar_data":
+    if iModel == "GausGaus_tt_data":
         #narrow component
         lMean_Gaus1_data     = r.RooRealVar("mean1_data"+lTag,"mean1_data"+lTag,175.,140.,200.)
         lSigma_Gaus1_data    = r.RooRealVar("sigma1_data"+lTag,"sigma1_data"+lTag,7.,0.,30.)
@@ -316,27 +295,28 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         lModelPdf       = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus1_data,lPoly_data),r.RooArgList(pVarHigh))
 
     getattr(iWorkspace,"import")(lModelPdf,r.RooFit.RecycleConflictNodes())
-    return iWorkspace.pdf("model_pdf_%s"%iLabel)
+    return iWorkspace.pdf("model_pdf_%s"%iLabel),lConstraints
 
-# return RooExtendPdf
+# return RooExtendPdf and Constraints
 def makeModel(iWorkspace,iLabel,iModel):
     print 'making model'
     lNumber = r.RooRealVar("number_%s"%iLabel,"number_%s"%iLabel,500,0.,1e7); # check if needed
-    lModelPdf = makePdf(iWorkspace,iLabel,iModel)
+    lModelPdf,lConstraints = makePdf(iWorkspace,iLabel,iModel)
     lModelPdf.Print()
     lModel = r.RooExtendPdf("model_%s"%iLabel,"model_%s"%iLabel,lModelPdf,lNumber)
     getattr(iWorkspace,"import")(lNumber,r.RooFit.RecycleConflictNodes())
     getattr(iWorkspace,"import")(lModel,r.RooFit.RecycleConflictNodes())
     lModel.Print();
     iWorkspace.pdf("model_%s"%iLabel).Print()
-    return iWorkspace.pdf("model_%s"%iLabel)
+    return iWorkspace.pdf("model_%s"%iLabel),lConstraints
 
 # fit single rooDataset to model
+# return list of constraints
 def fitSingleMC(iWorkspace,iLabel,iModel):
     print '---fitting for %s'%iLabel
     lVar   = iWorkspace.var(fVar);
     lData  = iWorkspace.data(iLabel+"_D");
-    lModel = makeModel(iWorkspace,iLabel,iModel)
+    lModel,lConstraints = makeModel(iWorkspace,iLabel,iModel)
 
     pRooFitResult = lModel.fitTo(lData,r.RooFit.Save(1),                             r.RooFit.Extended(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.Verbose(r.kFALSE))
     pRooFitResult = lModel.fitTo(lData,r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Extended(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.Verbose(r.kFALSE));
@@ -346,6 +326,8 @@ def fitSingleMC(iWorkspace,iLabel,iModel):
     getattr(iWorkspace,"import")(pRooFitResult)
 
     draw(lVar,lData,[lModel],iLabel+"_only")
+
+    return lConstraints
 
 class TopPeak():
     def __init__(self,options):
@@ -384,7 +366,7 @@ class TopPeak():
                 self._lPDatas[iLabel] = self.getDataset(iLabel,pFile,pCut,True)
                 # check single fits first
                 if iLabel != "mc":
-                    fitSingleMC(self._lW,iLabel,fPDFs[iLabel])
+                    self._lConstraints[iLabel] = fitSingleMC(self._lW,iLabel,fPDFs[iLabel])
 
             # check why are these needed
             self._lHPdfs[iLabel] = self.histPdf(iLabel)
@@ -394,7 +376,8 @@ class TopPeak():
             print 'number in pdf ',self._lNPdfs[iLabel]
             self._lNPdfs[iLabel].Print()
             print self._lW.data(iLabel+"_D").sumEntries()
-
+            print self._lConstraints
+        
     # get dataset for each process from tree
     def getDataset(self,iLabel,iFile,iCut="(1==1)",iWeight=False,iTree="otree2"):
         print 'preparing dataset for ',iFile,' with cut ',iCut
@@ -414,14 +397,20 @@ class TopPeak():
                     lSel=True; break;
             if not lSel: continue     
             lTree.GetEntry(i0) 
-            #TODO add separate samples for tt_fakeW and tt_realW. if tt_fakeW, reject if LeadingJet_MatchedHadW = True and vice versa
-            #if iLabel == "tt_realW" and getattr(lTree,"LeadingJet_MatchedHadW") == 0.0: continue
-            #if iLabel == "tt_fakeW" and getattr(lTree,"LeadingJet_MatchedHadW") == 1.0: continue 
             if iWeight:
                 lWeight = getattr(lTree,fWeight)*fLumi
             else:
                 lWeight = 1
-            lMass   = getattr(lTree,fVar) 
+            lMatched = 0
+            jmatched = getattr(lTree,"Puppijet0_vMatching");
+            jhadronic = getattr(lTree,"Puppijet0_isHadronicV");
+            if 'realW' in iLabel:
+                print jhadronic,jmatched
+            if jhadronic == 1.0 and jmatched < 1. and jmatched > 0.:
+                lMatched == 1;
+            if 'realW' in iLabel and lMatched == 0: continue
+            if 'fakeW' in iLabel and lMatched == 1: continue
+            lMass = getattr(lTree,fVar) 
             if lMass < self._lMSD_hi and lMass > self._lMSD_lo:
                 self._lMSD.setVal(lMass)
                 lData.add(r.RooArgSet(self._lMSD), lWeight)
@@ -443,11 +432,6 @@ class TopPeak():
         # while (pPar):
         #     pPar.setConstant(r.kTRUE)
         #     pPar = pParsIter.Next()
-        # create extended pdf
-        #lNorm = r.RooRealVar("norm_"+iLabel,"norm_"+iLabel,500.,0.,1e5);
-        #lModelExtend = r.RooExtendPdf("model_"+iLabel,"model_"+iLabel,lModel,lNorm)
-        #getattr(self._lW,'import')(lModelExtend,r.RooFit.RecycleConflictNodes())
-        #return lModelExtend
         return lModel
 
     # retunr roohistpdf
@@ -469,57 +453,62 @@ class TopPeak():
         lVar   = self._lW.var(fVar);
         lSData = self._lPDatas['data']
         lSMc   = self._lPDatas['mc']
-        print 'DATA', lSData.Print()
 
-        print 'MODELS'
-        #print self._lModels
-        #for iLabel in ['tt','st','wlnu']:
+        # constraints
+        pPdfConstraints_Mc   = r.RooArgSet("pPdfConstraints_Mc")
+        pPdfConstraints_Data = r.RooArgSet("pPdfConstraints_Data")
         for iLabel in ['st_mc','st_data','tt_mc','tt_data']:
+        #for iLabel in ['st_mc','st_data','tt_fakeW_mc','tt_fakeW_data','tt_realW_mc','tt_realW_data']:
             self._lModels[iLabel] = self.getModel(iLabel)
             self._lModels[iLabel].Print()
-        '''
-        # self._lModels['Mc']  = r.RooAddPdf("model_mc","model_mc",
-        #                                    r.RooArgList(self._lHPdfs['tt'],self._lHPdfs['st'],self._lHPdfs['wlnu']),
-        #                                    r.RooArgList(self._lNPdfs['st'],self._lNPdfs['wlnu']))
-        # so apparatenly there should be 2 type of "ttbar" models: model_bkg_data,model_ttbar_data, and also: model_bkg_TotalMC, model_ttbar_TotalMC and I do not understnd the differences...
+            for i0 in range(len(self._lConstraints[iLabel])):
+                if 'mc' in iLabel:
+                    pPdfConstraints_Mc.add(self._lW.pdf(self._lConstraints[iLabel][i0]))
+                if 'data' in iLabel:
+                    pPdfConstraints_Data.add(self._lW.pdf(self._lConstraints[iLabel][i0]))
+        pPdfConstraints_Mc.Print()
+        pPdfConstraints_Data.Print()
+
+        # models
         self._lModels['Mc'] = r.RooAddPdf("model_mc","model_mc",r.RooArgList(self._lModels['st_mc'], self._lModels['tt_mc']))
         self._lModels['Data'] = r.RooAddPdf("model_data","model_data",r.RooArgList(self._lModels['st_data'],self._lModels['tt_data']))
 
-        #getattr(self._lW,'import')(self._lModels['Mc'],r.RooFit.RecycleConflictNodes())
-        
-        #print self._lModels['tt']
         # fit to mc
-        pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.Verbose(r.kFALSE))
+        pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Mc),r.RooFit.Verbose(r.kFALSE))
+        pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Mc))
         pRooFitResult_Mc.Print()
         draw(lVar,lSMc,[self._lModels['Mc']],'mc_only')
  
+        # print mc parameters
         x1 = self._lModels['Mc'].getVariables()
         print x1.Print("v")
 
-        #fit to data
-        pRooFitResult_Data = self._lModels['Data'].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.Verbose(r.kFALSE)) #r.ExternalConstraints(lDataConstraints))
+        # fit to data
+        pRooFitResult_Data = self._lModels['Data'].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Data),r.RooFit.Verbose(r.kFALSE))
+        pRooFitResult_Data = self._lModels['Data'].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Data))
         pRooFitResult_Data.Print()
-        draw(lVar,lSData,[self._lModels['Data']],'data_only') # make this another frame? with chi2? and include pull?
+        draw(lVar,lSData,[self._lModels['Data']],'data_only') 
 
+        # print data parameters
         x2 = self._lModels['Data'].getVariables()
         print x2.Print("v")
 
         params = {}
-        params["mc_mean_val"] = x1.find("mean1_mcGausGaus_ttbar_mc_tt_mc").getVal()
-        params["mc_mean_err"] = x1.find("mean1_mcGausGaus_ttbar_mc_tt_mc").getError()
-        params["mc_sigma_val"]   = x1.find("sigma1_mcGausGaus_ttbar_mc_tt_mc").getVal() 
-        params["mc_sigma_err"]   = x1.find("sigma1_mcGausGaus_ttbar_mc_tt_mc").getError()
+        params["mc_mean_val"] = x1.find("mean1_mcGausGaus_tt_mc_tt_mc").getVal()
+        params["mc_mean_err"] = x1.find("mean1_mcGausGaus_tt_mc_tt_mc").getError()
+        params["mc_sigma_val"]   = x1.find("sigma1_mcGausGaus_tt_mc_tt_mc").getVal() 
+        params["mc_sigma_err"]   = x1.find("sigma1_mcGausGaus_tt_mc_tt_mc").getError()
 
-        params["data_mean_val"] = x2.find("mean1_dataGausGaus_ttbar_data_tt_data").getVal()
-        params["data_mean_err"] = x2.find("mean1_dataGausGaus_ttbar_data_tt_data").getError()
-        params["data_sigma_val"]   = x2.find("sigma1_dataGausGaus_ttbar_data_tt_data").getVal()
-        params["data_sigma_err"]   = x2.find("sigma1_dataGausGaus_ttbar_data_tt_data").getError()
+        params["data_mean_val"] = x2.find("mean1_dataGausGaus_tt_data_tt_data").getVal()
+        params["data_mean_err"] = x2.find("mean1_dataGausGaus_tt_data_tt_data").getError()
+        params["data_sigma_val"]   = x2.find("sigma1_dataGausGaus_tt_data_tt_data").getVal()
+        params["data_sigma_err"]   = x2.find("sigma1_dataGausGaus_tt_data_tt_data").getError()
 
         print params
 
         # draw data and mc
         drawDataMc(lVar,lSData,[self._lModels['Data']],lSMc,[self._lModels['Mc']],pRooFitResult_Mc,pRooFitResult_Data,params,"data_mc")
-        '''
+
         # write workspace
         self._lW.writeToFile(fOutput)
 
@@ -532,7 +521,7 @@ if __name__ == "__main__":
     fXMin  = options.xmin
     fXMax  = options.xmax
     fNBins = int( (fXMax - fXMin) / fBinWidth)
-    # get roodataset
+    # get roodataset and make individual fits
     lTop = TopPeak(options);
     # make combined fit
     lTop.fit();
