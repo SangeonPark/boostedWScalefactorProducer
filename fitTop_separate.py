@@ -507,9 +507,9 @@ class TopPeak():
 
         params = {}
         #lTagMc = fPDFs['tt_mc']+'_tt_mc'
-        lTagMc = fPDFs['tt_mc']+'_tt_realW_mc'
-        #lTagData = fPDFs['tt_data']+'tt_data'
-        lTagData = fPDFs['tt_data']+'tt_realW_data'
+        lTagMc = fPDFs['tt_realW_mc']+'_tt_realW_mc'
+        #lTagData = fPDFs['tt_data']+'_tt_data'
+        lTagData = fPDFs['tt_realW_data']+'_tt_realW_data'
         params["mc_mean_val"] = x1.find("mean_%s"%lTagMc).getVal()
         params["mc_mean_err"] = x1.find("mean_%s"%lTagMc).getError()
         params["mc_sigma_val"]   = x1.find("sigma_%s"%lTagMc).getVal() 
