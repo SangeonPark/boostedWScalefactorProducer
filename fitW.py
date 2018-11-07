@@ -365,6 +365,7 @@ class WPeak():
 
         self._TTsf = {};
 
+        # get dataset for individual processes except for mc and tt_bkg(fakew), tt_signal(realW)
         for iLabel,iFile in fFiles.iteritems():
             if iLabel == "mc" or  "bkg" in iLabel or "signal" in iLabel: continue
             for Pt_it in range(len(fPt_bins)-1):
@@ -385,11 +386,13 @@ class WPeak():
                         self._lConstraints[pName] = fitSingleMC(self._lW,pName,fPDFs[iLabel])
                     print self._lW.data(pName+"_D").sumEntries()
 
+        # get normalization SF for tt for pass and fail
         for Pt_it in range(len(fPt_bins)-1):
             Pt_label = "pT_" + str(fPt_bins[Pt_it]) + '_' + str(fPt_bins[Pt_it+1])
             for Cat_it in fCats:
                 self._TTsf[Pt_label+'_'+Cat_it] = self.getTTSF(Pt_label,Cat_it)
         
+        # get dataset for mc pass and fail and scale it by tt_sf norm
         iLabel = "mc"
         print 'SF!! ',iLabel
         for Pt_it in range(len(fPt_bins)-1):
@@ -584,21 +587,12 @@ class WPeak():
 
                     if "_data" not in iLabel:
                         if 'tt' in iLabel:
-                            print 'adding tt for %s with entries %.2f scaled by %.2f: %.2f'%(lLabel,self._lW.data(lLabel+"_D").sumEntries(),self._TTsf[pPtLabelCat],self._lW.data(lLabel+"_D").sumEntries()*self._TTsf[pPtLabelCat])
                             nBkg += self._lW.data(lLabel+"_D").sumEntries()*self._TTsf[pPtLabelCat]
                         else:
-                            print 'adding minor bkg for %s with entries %.2f scaled by %.2f: %.2f'%(lLabel,self._lW.data(lLabel+"_D").sumEntries(),1,self._lW.data(lLabel+"_D").sumEntries())
                             nBkg += self._lW.data(lLabel+"_D").sumEntries()
 
                     self._lHPdfs[lLabel] = self.histPdf(lLabel)
-                    if 'tt' in iLabel:
-                        self._lNPdfs[lLabel] = r.RooRealVar("number_%s"%lLabel,"number_%s"%lLabel,self._lW.data(lLabel+"_D").sumEntries()*self._TTsf[pPtLabelCat])
-                    else:
-                        self._lNPdfs[lLabel] = r.RooRealVar("number_%s"%lLabel,"number_%s"%lLabel,self._lW.data(lLabel+"_D").sumEntries())
-                    #self._lNPdfs[lLabel].Print()
-
                     self._lModels[lLabel] = self.getModel(lLabel)
-                    #self._lModels[lLabel].Print()
 
                     for i0 in range(len(self._lConstraints[lLabel])):
                         if 'mc' in lLabel:
@@ -606,17 +600,11 @@ class WPeak():
                         if 'data' in lLabel:
                             pPdfConstraints_Data.add(self._lW.pdf(self._lConstraints[lLabel][i0]))
                             
-                # tt model
+                # build tt model for realw(signal) so that eff is included in parameter of fit
                 xConstraints = {}
                 for iLabel in ['tt_signal_mc','tt_signal_data']:
                     lLabel = iLabel + '_' + pPtLabelCat
                     self._lModels[lLabel],xConstraints[lLabel]  =  makeTTModel(self._lW,iLabel,pPtLabel,Cat_it,fPDFs[iLabel])
-
-                # scale[cat] = (tt_realW*ttSF[cat] + tt_fakeW*ttSF[cat] + minorBkgs)/(data[pass] + data[fail]
-                print 'scale for cat ',pPtLabelCat,' nBkg: ',nBkg,' nData ',nData,' sf ',nBkg/nData
-                self._lScaleNumber['mc_'+pPtLabelCat] = nBkg/nData
-                pScale = r.RooRealVar("scale_number_"+pPtLabelCat,"scale_number_"+pPtLabelCat,self._lScaleNumber['mc_'+pPtLabelCat])
-                getattr(self._lW,'import')(pScale,r.RooFit.RecycleConflictNodes())
 
                 # constraints
                 pPdfConstraints_Mc.Print()
@@ -644,62 +632,12 @@ class WPeak():
                         #print 'set constant'
                     var = iter.Next()
 
-                # data and mc models
-                print self._lModels
-                self._lModels['Mc_'+pPtLabelCat] = r.RooAddPdf("model_mc_"+pPtLabelCat,"model_mc_"+pPtLabelCat,
-                                                               r.RooArgList(self._lModels['wlnu_mc_'+pPtLabelCat],
-                                                                            self._lModels['st_mc_'+pPtLabelCat],
-                                                                            self._lModels['tt_fakeW_mc_'+pPtLabelCat],
-                                                                            self._lModels['tt_realW_mc_'+pPtLabelCat]),
-                                                               r.RooArgList(self._lNPdfs['wlnu_mc_'+pPtLabelCat],
-                                                                            self._lNPdfs['st_mc_'+pPtLabelCat],
-                                                                            self._lNPdfs['tt_fakeW_mc_'+pPtLabelCat],
-                                                                            self._lNPdfs['tt_realW_mc_'+pPtLabelCat]))
-                self._lModels['Data_'+pPtLabelCat] = r.RooAddPdf("model_data_"+pPtLabelCat,"model_data_"+pPtLabelCat,
-                                                                 r.RooArgList(self._lModels['wlnu_data_'+pPtLabelCat],
-                                                                              self._lModels['st_data_'+pPtLabelCat],
-                                                                              self._lModels['tt_fakeW_data_'+pPtLabelCat],
-                                                                              self._lModels['tt_realW_data_'+pPtLabelCat]),
-                                                                 r.RooArgList(self._lNPdfs['wlnu_data_'+pPtLabelCat],
-                                                                              self._lNPdfs['st_data_'+pPtLabelCat],
-                                                                              self._lNPdfs['tt_fakeW_data_'+pPtLabelCat],
-                                                                              self._lNPdfs['tt_realW_data_'+pPtLabelCat]))
-
-                # fit to data (cat)
-                pRooFitResult_Data = self._lModels['Data_'+pPtLabelCat].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),
-                                                                             r.RooFit.ExternalConstraints(pPdfConstraints_Data))
-                pRooFitResult_Data.Print()
-                lTagData = 'data_only_'+pPtLabelCat
-                lTagData+= '_ttmatched'
-                draw(lVar,lSData,[self._lModels['Data_'+pPtLabelCat]],pRooFitResult_Data,lTagData)
-                x2 = self._lModels['Data_'+pPtLabelCat].getVariables()
-                print x2.Print("v")
-                
-                # fit to mc (cat)
-                pRooFitResult_Mc   = self._lModels['Mc_'+pPtLabelCat].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),
-                                                                   r.RooFit.ExternalConstraints(pPdfConstraints_Mc))
-                lTagMc = 'mc_only_'+pPtLabelCat
-                lTagMc += '_ttmatched'
-                draw(lVar,lSMc,[self._lModels['Mc_'+pPtLabelCat]],pRooFitResult_Mc,lTagMc)
-                x1 = self._lModels['Mc_'+pPtLabelCat].getVariables()
-                print x1.Print("v")
-
-                # draw data and mc (for that cat)
-                lTagDataMc = "data_mc_"+pPtLabelCat
-                lTagDataMc += "_ttmatched"
-                params = {}
-                drawDataMc(lVar,lSData,[self._lModels['Data_'+pPtLabelCat]],lSMc,[self._lModels['Mc_'+pPtLabelCat]],pRooFitResult_Mc,pRooFitResult_Data,params,lTagDataMc)
-
-                getattr(self._lW,"import")(self._lModels["Mc_"+pPtLabelCat],r.RooFit.RecycleConflictNodes())
-                getattr(self._lW,"import")(self._lModels["Data_"+pPtLabelCat],r.RooFit.RecycleConflictNodes())
-
-                # build model for tt bkg(fakeW) and signal(realW)
+                # build model for tt bkg (fakeW) for mc and data
                 for iLabel in ["tt_bkg_mc","tt_bkg_data"]:
                     lLabel = iLabel + '_' + pPtLabelCat
                     lModel,lConstraints = makeModel(self._lW,lLabel,fPDFs[iLabel])
                     self._lModels[lLabel] = self.getModel(lLabel)
-                    
-                print self._lModels
+
                 self._lModels['TotalMc_'+pPtLabelCat] = r.RooAddPdf(("model_total_mc_"+pPtLabelCat),("model_totalmc_"+pPtLabelCat),
                                                                     r.RooArgList(self._lModels["tt_signal_mc_"+pPtLabelCat],
                                                                                  self._lModels["tt_bkg_mc_"+pPtLabelCat],
@@ -714,9 +652,31 @@ class WPeak():
                 getattr(self._lW,"import")(self._lModels["TotalMc_"+pPtLabelCat],r.RooFit.RecycleConflictNodes())
                 getattr(self._lW,"import")(self._lModels["TotalData_"+pPtLabelCat],r.RooFit.RecycleConflictNodes())
 
-            # print SFs
-            print " Pass MC / all data = %.3f" %(self._lW.var("scale_number_"+pPtLabel+"_pass").getVal())
-            print " Fail MC / all data = %.3f" %(self._lW.var("scale_number_"+pPtLabel+"_fail").getVal())
+                # fit to data (cat)
+                pRooFitResult_Data = self._lModels['TotalData_'+pPtLabelCat].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),
+                                                                                   r.RooFit.ExternalConstraints(pPdfConstraints_Data))
+                pRooFitResult_Data.Print()
+                lTagData = 'data_only_'+pPtLabelCat
+                lTagData+= '_ttmatched'
+                draw(lVar,lSData,[self._lModels['TotalData_'+pPtLabelCat]],pRooFitResult_Data,lTagData)
+                x2 = self._lModels['TotalData_'+pPtLabelCat].getVariables()
+                print x2.Print("v")
+                
+                # fit to mc (cat)
+                pRooFitResult_Mc   = self._lModels['TotalMc_'+pPtLabelCat].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),
+                                                                                 r.RooFit.ExternalConstraints(pPdfConstraints_Mc))
+                lTagMc = 'mc_only_'+pPtLabelCat
+                lTagMc += '_ttmatched'
+                draw(lVar,lSMc,[self._lModels['TotalMc_'+pPtLabelCat]],pRooFitResult_Mc,lTagMc)
+                x1 = self._lModels['TotalMc_'+pPtLabelCat].getVariables()
+                print x1.Print("v")
+
+                # draw data and mc (for that cat)
+                lTagDataMc = "data_mc_"+pPtLabelCat
+                lTagDataMc += "_ttmatched"
+                params = {}
+                drawDataMc(lVar,lSData,[self._lModels['TotalData_'+pPtLabelCat]],lSMc,[self._lModels['TotalMc_'+pPtLabelCat]],pRooFitResult_Mc,pRooFitResult_Data,params,lTagDataMc)
+
 
             # combined data (pass and fail)
             combData_data = r.RooDataSet("combData_data","combData_data",r.RooArgSet(self._lMSD,self._lWeight),r.RooFit.WeightVar(self._lWeight),
@@ -728,32 +688,6 @@ class WPeak():
                                        RooFit.Index(pCats),
                                        RooFit.Import("mc_"+pPtLabel+"_pass",self._lPDatas["mc_"+pPtLabel+"_pass"]),
                                        RooFit.Import("mc_"+pPtLabel+"_fail",self._lPDatas["mc_"+pPtLabel+"_fail"]))
-
-            # simultaneous fit to pass and fail
-            simPdf_data = r.RooSimultaneous("simPdf_data","simPdf_data",pCats)
-            simPdf_mc   = r.RooSimultaneous("simPdf_mc"  ,"simPdf_mc"  ,pCats)
-
-            for Cat_it in fCats:
-                simPdf_data.addPdf(self._lW.pdf("model_data_"+pPtLabel+"_"+Cat_it),"data_"+pPtLabel+"_"+Cat_it)
-                simPdf_mc  .addPdf(self._lW.pdf("model_mc_"  +pPtLabel+"_"+Cat_it),"mc_"  +pPtLabel+"_"+Cat_it)
-
-            # do simult fit
-            print "simultaneous pass and fail fit "
-            simFit_mc   = simPdf_mc  .fitTo(combData_mc,r.RooFit.Save(r.kTRUE),r.RooFit.Verbose(r.kFALSE),r.RooFit.Minimizer("Minuit2"),r.RooFit.SumW2Error(r.kTRUE))
-            simFit_mc.Print()
-            simFit_data = simPdf_data.fitTo(combData_data,r.RooFit.Save(r.kTRUE),r.RooFit.Verbose(r.kFALSE),r.RooFit.Minimizer("Minuit2"),r.RooFit.SumW2Error(r.kTRUE))
-            simFit_data.Print()
-
-            # get Wtag
-            self.getWtagSFs(pPtLabel,fPDFs["tt_realW_mc"],"tt_realW_mc");
-
-            # draw simult fit
-            drawDataMc(lVar,lSData,
-                       [self._lW.pdf("model_data_"+pPtLabel+"_pass")],lSMc,[self._lW.pdf("model_mc_"+pPtLabel+"_pass")],
-                       simFit_mc,simFit_data,params,"data_pass_simult")
-            drawDataMc(lVar,lSData,
-                       [self._lW.pdf("model_data_"+pPtLabel+"_fail")],lSMc,[self._lW.pdf("model_mc_"+pPtLabel+"_fail")],
-                       simFit_mc,simFit_data,params,"data_fail_simult")
 
             # simultaneous fit with tt model
             simPdf_total_data = r.RooSimultaneous("simPdf_total_data","simPdf_total_data",pCats)
@@ -795,4 +729,4 @@ if __name__ == "__main__":
     # get roodataset and make individual fits
     lW = WPeak(options);
     # make combined fit
-    #lW.fit();
+    lW.fit();
