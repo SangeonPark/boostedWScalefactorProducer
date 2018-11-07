@@ -19,7 +19,6 @@ fOutput="top.root"
 fFiles = {'data': 'Data',
           #'wlnu_mc' : 'WJets',
           #'wlnu_data': 'WJets',
-          #'vv':   'VV', # ignore diboson for now
           'st_mc':   'ST',
           'st_data':   'ST',
           'tt_mc':   'TT',
@@ -175,6 +174,7 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
     pVarHigh1      = r.RooRealVar("%sHi1_%s"%(lVar.GetName(),lTag),"%sHi1_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
     lConstraints = []
 
+
     if iModel == "Exp_mc":
         lC_Exp_mc        = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.03,-2.,0.05)
         lModelPdf = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_mc);
@@ -196,6 +196,10 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         #pPoly           = r.RooExponential("poly"+lTag,"poly"+lTag,lVar,la1)
         pPoly            = r.RooPolynomial("poly"+lTag,"poly"+lTag,lVar,r.RooArgList(la1),1)
         lModelPdf = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pPoly),r.RooArgList(pVarHigh))
+        if 'data' in iModel: # or 'mc' in iModel:
+            addConstraint(iWorkspace,lMean_Gaus,177,5,lConstraints)
+            addConstraint(iWorkspace,lSigma_Gaus,17,5,lConstraints)
+            addConstraint(iWorkspace,la1,-0.002,0.0008,lConstraints)
 
     if "ErfExpGaus_st" in iModel:
         lC_ErfExp        = r.RooRealVar("c"+lTag,"c"+lTag,-0.05,-0.2,0.0)
@@ -226,13 +230,26 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         lModelPdf = r.RooErfExpPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
 
     if  "GausErfExp_tt" in iModel:
+        print iLabel
         lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-10,10.)
         lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,175.,0.,200.)
         lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,30.,0.,200.)
         lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,175.,130.,200.)
         lSigma_Gaus    = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,7.,0.,40.)
-        pErfExp        = r.RooErfExpPdf("erfExp_"+lTag,"erfExp_%s"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
-        pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
+        if iLabel == "tt_mc" or iLabel == "tt_data":
+            lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,20.,0.,200.)
+        if iLabel == "tt_mc":
+            lSigma_Gaus    = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,10.,5.,15.)
+        # if "realW" in iLabel:
+        #     lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,175.,140.,200.)
+        #     lSigma_Gaus    = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,15.,0.,30.)
+        #     lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,250.,0.,1000.)
+        #     lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,60.,0.,200.)
+        if "fakeW" in iLabel:  
+            lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,100.,-1000.,1000.)
+            lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,30.,-1000.,1000.)
+            lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,125.,100.,200.)
+            lSigma_Gaus    = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,7.,0.,40.)
         pVarFrac       = r.RooRealVar("%sFrac_%s"%(lVar.GetName(),iLabel),"%sFrac_%s"%(lVar.GetName(),iLabel),1.0); # is this needed?
         #lC_ErfExp.setConstant(r.kTRUE);
         #lOffSet_ErfExp.setConstant(r.kTRUE);
@@ -240,14 +257,98 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
         pGaus          = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
         pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         lModelPdf = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pErfExp),r.RooArgList(pVarHigh),1);
-        if 'mc' in iLabel:
-            addConstraint(iWorkspace,lMean_Gaus,175,10,lConstraints)
-            addConstraint(iWorkspace,lSigma_Gaus,20,10,lConstraints)
-            addConstraint(iWorkspace,lWidth_ErfExp,20,10,lConstraints)
-        #if 'data'in iLabel:
-        #    addConstraint(iWorkspace,lMean_Gaus,175,15,lConstraints)
-        #    addConstraint(iWorkspace,lSigma_Gaus,20,10,lConstraints)
-        #    addConstraint(iWorkspace,lWidth_ErfExp,10,5,lConstraints)
+        if 'mc' in iLabel and not 'fakeW' in iLabel and iLabel != 'tt_mc':
+            addConstraint(iWorkspace,lC_ErfExp,177,5,lConstraints)
+            addConstraint(iWorkspace,lMean_Gaus,177,10,lConstraints)
+            addConstraint(iWorkspace,lSigma_Gaus,15,10,lConstraints)
+            #addConstraint(iWorkspace,lWidth_ErfExp,60,20,lConstraints)
+            addConstraint(iWorkspace,lOffSet_ErfExp,200,10,lConstraints)
+            #Puppijet0_msdHi_GausErfExp_tt_data_tt_realW_data    5.8297e-01 +/-  1.75e-01
+            #c_GausErfExp_tt_data_tt_realW_data   -2.4649e-02 +/-  3.15e-02
+            #mean_GausErfExp_tt_data_tt_realW_data    1.7787e+02 +/-  3.53e-01
+            #number_tt_realW_data    8.2941e+03 +/-  6.27e+01
+            #offset_GausErfExp_tt_data_tt_realW_data    2.0000e+02 +/-  1.71e-01
+            #sigma_GausErfExp_tt_data_tt_realW_data    1.5277e+01 +/-  2.61e+00
+            #width_GausErfExp_tt_data_tt_realW_data    6.1304e+01 +/-  2.23e+01
+            addConstraint(iWorkspace,lOffSet_ErfExp,-4.2016e-02,0.01,lConstraints)
+        if 'data' in iLabel and not 'fakeW' in iLabel: # and not 'realW' in iLabel:
+            #addConstraint(iWorkspace,lMean_Gaus,175,10,lConstraints)
+            #addConstraint(iWorkspace,lSigma_Gaus,15,10,lConstraints)
+            #addConstraint(iWorkspace,lWidth_ErfExp,10,5,lConstraints)
+            addConstraint(iWorkspace,lOffSet_ErfExp,200,10,lConstraints)
+            addConstraint(iWorkspace,lOffSet_ErfExp,-4.2016e-02,0.01,lConstraints)
+
+        #if iLabel == 'tt_mc':
+        #    addConstraint(iWorkspace,lMean_Gaus,173,10,lConstraints)
+        #    addConstraint(iWorkspace,lSigma_Gaus,11,6,lConstraints)
+        #    addConstraint(iWorkspace,lOffSet_ErfExp,200,10,lConstraints)
+        if iLabel == 'tt_data':
+            addConstraint(iWorkspace,lMean_Gaus,173,10,lConstraints)
+            addConstraint(iWorkspace,lSigma_Gaus,11,6,lConstraints)
+            addConstraint(iWorkspace,lOffSet_ErfExp,200,10,lConstraints)
+
+  # Puppijet0_msdHi_GausErfExp_tt_mc_tt_mc    2.5475e-01 +/-  1.74e-01
+  # Puppijet0_msdHi_PolyGaus_st_mc_st_mc    8.2245e-01 +/-  5.56e-01
+  # a1PolyGaus_st_mc_st_mc   -1.0582e-06 +/-  3.98e-02
+  # c_GausErfExp_tt_mc_tt_mc   -2.5316e-02 +/-  8.73e-03
+  # meanPolyGaus_st_mc_st_mc    1.9000e+02 +/-  9.50e-01
+  # mean_GausErfExp_tt_mc_tt_mc    1.7374e+02 +/-  6.15e+01
+  #         number_st_mc    1.5506e+03 +/-  2.48e+03
+  #         number_tt_mc    1.1681e+04 +/-  2.27e+03
+  # offset_GausErfExp_tt_mc_tt_mc    1.9999e+02 +/-  1.16e+01
+  # sigmaPolyGaus_st_mc_st_mc    1.1456e+01 +/-  1.16e+02
+  # sigma_GausErfExp_tt_mc_tt_mc    1.1754e+01 +/-  6.25e+01
+  # width_GausErfExp_tt_mc_tt_mc    7.7519e+01 +/-  3.85e+00
+
+  # Puppijet0_msdHi_GausErfExp_tt_mc_tt_mc    3.1671e-01 +/-  3.73e-01
+  # Puppijet0_msdHi_PolyGaus_st_mc_st_mc    5.1966e-01 +/-  2.02e+00
+  # a1PolyGaus_st_mc_st_mc   -1.9779e-03 +/-  3.01e-03
+  # c_GausErfExp_tt_mc_tt_mc   -2.4609e-02 +/-  2.21e-02
+  # meanPolyGaus_st_mc_st_mc    1.7878e+02 +/-  9.26e+00
+  # mean_GausErfExp_tt_mc_tt_mc    1.7801e+02 +/-  1.36e+00
+  #         number_st_mc    1.4015e+03 +/-  2.84e+03
+  #         number_tt_mc    1.1830e+04 +/-  2.76e+03
+  # offset_GausErfExp_tt_mc_tt_mc    2.0000e+02 +/-  2.88e+00
+  # sigmaPolyGaus_st_mc_st_mc    1.8236e+01 +/-  3.63e+01
+  # sigma_GausErfExp_tt_mc_tt_mc    1.3885e+01 +/-  2.15e+00
+  # width_GausErfExp_tt_mc_tt_mc    7.9302e+01 +/-  1.05e+01
+
+  # converging
+  # Puppijet0_msdHi_GausErfExp_tt_mc_tt_mc    1.2856e-01 +/-  5.59e-01
+  # Puppijet0_msdHi_PolyGaus_st_mc_st_mc    4.5075e-01 +/-  5.01e-02
+  # a1PolyGaus_st_mc_st_mc   -1.9521e-03 +/-  3.21e-03
+  # c_GausErfExp_tt_mc_tt_mc   -4.0406e-02 +/-  2.18e-02
+  # meanPolyGaus_st_mc_st_mc    1.8042e+02 +/-  2.00e+00
+  # mean_GausErfExp_tt_mc_tt_mc    1.7179e+02 +/-  1.82e+01
+  #         number_st_mc    7.9511e+03 +/-  3.82e+03
+  #         number_tt_mc    5.2802e+03 +/-  3.84e+03
+  # offset_GausErfExp_tt_mc_tt_mc    2.0000e+02 +/-  9.70e-01
+  # sigmaPolyGaus_st_mc_st_mc    1.4636e+01 +/-  1.15e+01
+  # sigma_GausErfExp_tt_mc_tt_mc    9.1787e+00 +/-  1.06e+01
+  # width_GausErfExp_tt_mc_tt_mc    5.4555e+01 +/-  1.14e+01
+
+    if "GausExp_tt" in iModel:
+        if iLabel == "tt_mc" or iLabel == "tt_data":
+            lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,175.,130.,200.)
+        elif "fakeW" in iLabel:
+            lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,130.,100.,150.)
+        elif "realW" in iLabel:
+            lMean_Gaus     = r.RooRealVar("mean_"+lTag,"mean_"+lTag,175.,160.,200.)
+        lSigma_Gaus        = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,7.,0.,40.)
+        lC_Exp             = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-1.,1.)
+        la_Poly           = r.RooRealVar("a_"+lTag,"a_"+lTag,-0.005,0.,0.005)
+        la2_Poly           = r.RooRealVar("a2_"+lTag,"a2_"+lTag,-0.005,0.,0.005)
+        pGaus              = r.RooGaussian("gaus_"+lTag,"gaus_%s"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
+        pExp               = r.RooExponential("exp_"+lTag,"exp_%s"+lTag,lVar,lC_Exp)
+        pPoly              = r.RooPolynomial("poly_"+lTag,"poly_%s"+lTag,lVar,r.RooArgList(la_Poly,la2_Poly),1)
+        lModelPdf          = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pPoly,pExp),r.RooArgList(pVarHigh,pVarHigh1),1)
+        if iLabel == 'tt_mc' or iLabel == 'tt_data' or 'realW' in iLabel:
+            addConstraint(iWorkspace,lMean_Gaus,175,8,lConstraints)
+            addConstraint(iWorkspace,lSigma_Gaus,17,5,lConstraints)
+        if 'data' in iModel and 'fakeW' in iLabel:
+            addConstraint(iWorkspace,lMean_Gaus,130,10,lConstraints)
+            addConstraint(iWorkspace,la_Poly,-0.002,0.001,lConstraints)
+            addConstraint(iWorkspace,la2_Poly,-0.005,0.002,lConstraints)
 
     if iModel == "ErfExp_tt_mc":
         lModelPdf      = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pGaus,pErfExp),r.RooArgList(pVarHigh),1);
@@ -468,7 +569,9 @@ class TopPeak():
         pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Mc),r.RooFit.Verbose(r.kFALSE))
         pRooFitResult_Mc   = self._lModels['Mc'].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Mc))
         pRooFitResult_Mc.Print()
-        draw(lVar,lSMc,[self._lModels['Mc']],pRooFitResult_Mc,'mc_only')
+        lTagMc = 'mc_only'
+        if self._lMatch: lTagMc += '_ttmatched'
+        draw(lVar,lSMc,[self._lModels['Mc']],pRooFitResult_Mc,lTagMc)
  
         # print mc parameters
         x1 = self._lModels['Mc'].getVariables()
@@ -478,7 +581,9 @@ class TopPeak():
         pRooFitResult_Data = self._lModels['Data'].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Data),r.RooFit.Verbose(r.kFALSE))
         pRooFitResult_Data = self._lModels['Data'].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),r.RooFit.ExternalConstraints(pPdfConstraints_Data))
         pRooFitResult_Data.Print()
-        draw(lVar,lSData,[self._lModels['Data']],pRooFitResult_Data,'data_only') 
+        lTagData = 'data_only'
+        if self._lMatch: lTagData+= '_ttmatched'
+        draw(lVar,lSData,[self._lModels['Data']],pRooFitResult_Data,lTagData) 
 
         # print data parameters
         x2 = self._lModels['Data'].getVariables()
@@ -503,7 +608,9 @@ class TopPeak():
         print params
 
         # draw data and mc
-        drawDataMc(lVar,lSData,[self._lModels['Data']],lSMc,[self._lModels['Mc']],pRooFitResult_Mc,pRooFitResult_Data,params,"data_mc")
+        lTagDataMc = "data_mc"
+        if self._lMatch: lTagDataMc += "_ttmatched"
+        drawDataMc(lVar,lSData,[self._lModels['Data']],lSMc,[self._lModels['Mc']],pRooFitResult_Mc,pRooFitResult_Data,params,lTagDataMc)
         # write workspace
         self._lW.writeToFile(fOutput)
 
