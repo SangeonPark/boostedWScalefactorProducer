@@ -606,11 +606,19 @@ class WPeak():
                     lLabel = iLabel + '_' + pPtLabelCat
                     self._lModels[lLabel],xConstraints[lLabel]  =  makeTTModel(self._lW,iLabel,pPtLabel,Cat_it,fPDFs[iLabel])
 
+                # build model for tt bkg (fakeW) for mc and data                                                                                                                 
+                for iLabel in ["tt_bkg_mc","tt_bkg_data"]:
+                    lLabel = iLabel + '_' + pPtLabelCat
+                    lModel,lConstraints = makeModel(self._lW,lLabel,fPDFs[iLabel])
+                    self._lModels[lLabel] = self.getModel(lLabel)
+
+
                 # constraints
                 pPdfConstraints_Mc.Print()
                 pPdfConstraints_Data.Print()
 
                 # fix variables from MC and only leave floating normalization, mean and sigma from TT
+                '''
                 args = self._lW.allVars()
                 args.Print()
                 iter = args.createIterator()
@@ -621,17 +629,18 @@ class WPeak():
                              "width_GausErfExp_tt_data_tt_realW_data",
                              "a1_GausExp_tt_data",
                              "number_tt",
-                             "sigma_GausErfExp_tt"]
+                             "sigma_GausErfExp_tt",
+                             "eff_"]
                 while var:
                     #print var.GetName()
                     if any(f in var.GetName() for f in lFloating):
                         #print 'float: ',var.GetName()
                         pass
                     else:
-                        var.setConstant(r.kTRUE)
+                        #var.setConstant(r.kTRUE)
                         #print 'set constant'
                     var = iter.Next()
-
+                '''
                 # build model for tt bkg (fakeW) for mc and data
                 for iLabel in ["tt_bkg_mc","tt_bkg_data"]:
                     lLabel = iLabel + '_' + pPtLabelCat
