@@ -618,29 +618,34 @@ class WPeak():
                 pPdfConstraints_Data.Print()
 
                 # fix variables from MC and only leave floating normalization, mean and sigma from TT
-                '''
+                # variables floating: eff(realW), numbertotal(realW)
                 args = self._lW.allVars()
                 args.Print()
                 iter = args.createIterator()
                 var = iter.Next()
-                lFloating = ["mean_GausErfExp_tt",
-                             "c_GausErfExp_tt_data_tt_realW_data",
-                             "offset_GausErfExp_tt_data_tt_realW_data",
-                             "width_GausErfExp_tt_data_tt_realW_data",
-                             "a1_GausExp_tt_data",
+                lFloating = ["mean_GausErfExp_tt_",
+                             "c_GausErfExp_tt_",
+                             "c_ErfExp_tt_",
+                             "offset_GausErfExp_tt_",
+                             "offset_ErfExp_tt_",
+                             "sigma_GausErfExp_tt_",
+                             "width_ErfExp_tt_",
+                             "width_GausErfExp_tt_",
+                             #"a1_GausErfExp_tt_",
                              "number_tt",
-                             "sigma_GausErfExp_tt",
-                             "eff_"]
+                             "eff_tt_signal_",
+                             "numbertotal_",
+                             ]
                 while var:
                     #print var.GetName()
                     if any(f in var.GetName() for f in lFloating):
-                        #print 'float: ',var.GetName()
+                        print 'float: ',var.GetName()
                         pass
                     else:
-                        #var.setConstant(r.kTRUE)
-                        #print 'set constant'
+                        var.setConstant(r.kTRUE)
+                        print 'set constant'
                     var = iter.Next()
-                '''
+
                 # build model for tt bkg (fakeW) for mc and data
                 for iLabel in ["tt_bkg_mc","tt_bkg_data"]:
                     lLabel = iLabel + '_' + pPtLabelCat
