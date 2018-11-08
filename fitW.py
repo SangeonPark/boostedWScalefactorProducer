@@ -43,9 +43,11 @@ fPDFs = {
          'st_mc':         'ErfExpGaus_st_mc',
          'st_data':       'ErfExpGaus_st_data',
          'tt_fakeW_mc':   'ErfExp_tt_mc',
-         'tt_realW_mc':   'GausErfExp_tt_mc',
+#         'tt_realW_mc':   'GausErfExp_tt_mc',
+         'tt_realW_mc':   'DoubleCB',
          'tt_fakeW_data': 'ErfExp_tt_data',
-         'tt_realW_data': 'GausErfExp_tt_data'}
+#         'tt_realW_data': 'GausErfExp_tt_data',
+         'tt_realW_data': 'DoubleCB'}
 
 fPDFs['tt_signal_mc'] = fPDFs['tt_realW_mc']
 fPDFs['tt_signal_data'] = fPDFs['tt_realW_data']
@@ -188,6 +190,8 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
     pVarHigh       = r.RooRealVar("%sHi_%s"%(lVar.GetName(),lTag),"%sHi_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
     pVarHigh1      = r.RooRealVar("%sHi1_%s"%(lVar.GetName(),lTag),"%sHi1_%s"%(lVar.GetName(),lTag),0.5,0.,1.);
     lConstraints = []
+    gaus_mean = 82.
+    gaus_sigma = 8.
 
     if iModel == "Exp_mc":
         lC_Exp_mc        = r.RooRealVar("c_mc"+lTag,"c_mc"+lTag,-0.01,-2.,0.05)
@@ -196,15 +200,32 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
     if iModel == "Exp_data":
         lC_Exp_data      = r.RooRealVar("c_data"+lTag,"c_data"+lTag,-0.01,-2.,0.05)
         lModelPdf = r.RooExponential("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lC_Exp_data);
-        
+       
+
+    if "DoubleCB" in iModel:
+        lMean1_gaus      = r.RooRealVar("mean_"+lTag,"mean_"+lTag,gaus_mean,gaus_mean*0.8,gaus_mean*1.2)
+        lSigma1_gaus     = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,gaus_sigma,gaus_sigma*0.5,gaus_sigma*2)
+        lAlpha1          = r.RooRealVar("alpha1_"+lTag,"alpha1_"+lTag,1.1,-10.,10.)
+        lSign1           = r.RooRealVar("sign1_"+lTag,"sign1_"+lTag,37.,0.,48.)
+        lAlpha2          = r.RooRealVar("alpha2_"+lTag,"alpha2_"+lTag,1.,-10.,10.)
+        lSign2           = r.RooRealVar("sign2_"+lTag,"sign2_"+lTag,14.,0.,46.)
+        if "pass" in iLabel:
+            lAlpha1          = r.RooRealVar("alpha1_"+lTag,"alpha1_"+lTag,1.1,-10.,10.)
+            lSign1           = r.RooRealVar("sign1_"+lTag,"sign1_"+lTag,17.,0.,48.)
+            lAlpha2          = r.RooRealVar("alpha2_"+lTag,"alpha2_"+lTag,2.,-10.,10.)
+            lSign2           = r.RooRealVar("sign2_"+lTag,"sign2_"+lTag,1.6,0.,10.)
+
+
+        lModelPdf        = r.RooDoubleCrystalBall("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,lVar,lMean1_gaus,lSigma1_gaus,lAlpha1,lSign1,lAlpha2,lSign2)
+ 
     if "ErfExpGaus_st" in iModel:
-        lC_ErfExp        = r.RooRealVar("c"+lTag,"c"+lTag,-0.04,-0.2,0.0)
-        lOffSet_ErfExp   = r.RooRealVar("offset"+lTag,"offset"+lTag,82.,75.,90.)
-        lWidth_ErfExp    = r.RooRealVar("width"+lTag,"width"+lTag,30.,10.,300.)
-        lMean_Gaus       = r.RooRealVar("mean"+lTag,"mean"+lTag,82.,75.,90.)
-        lSigma_Gaus      = r.RooRealVar("sigma"+lTag,"sigma"+lTag,7.,0.,40.)
-        pGaus            = r.RooGaussian("gaus"+lTag,"gaus"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
-        pErfExp          = r.RooErfExpPdf("erfExp"+lTag,"erfExp"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
+        lC_ErfExp        = r.RooRealVar("c_"+lTag,"c"+lTag,-0.04,-0.2,0.0)
+        lOffSet_ErfExp   = r.RooRealVar("offset_"+lTag,"offset_"+lTag,82.,75.,90.)
+        lWidth_ErfExp    = r.RooRealVar("width_"+lTag,"width_"+lTag,30.,10.,300.)
+        lMean_Gaus       = r.RooRealVar("mean_"+lTag,"mean_"+lTag,82.,75.,90.)
+        lSigma_Gaus      = r.RooRealVar("sigma_"+lTag,"sigma_"+lTag,7.,0.,40.)
+        pGaus            = r.RooGaussian("gaus_"+lTag,"gaus_"+lTag,lVar,lMean_Gaus,lSigma_Gaus)
+        pErfExp          = r.RooErfExpPdf("erfExp_"+lTag,"erfExp_"+lTag,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         lModelPdf = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp,pGaus),r.RooArgList(pVarHigh));
 
     if iModel == "ErfExp_st_mc":
@@ -255,8 +276,8 @@ def makePdf(iWorkspace,iLabel,iModel,iMc=False):
 
     if iModel == "ErfExp_tt_mc" or iModel == "ErfExp_tt_data":
         lC_ErfExp      = r.RooRealVar("c_"+lTag,"c_"+lTag,-0.02,-10,10.)
-        lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,20.,0.,300.)
-        lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,20.,0.,60.)
+        lOffSet_ErfExp = r.RooRealVar("offset_"+lTag,"offset_"+lTag,200.,0.,300.)
+        lWidth_ErfExp  = r.RooRealVar("width_"+lTag,"width_"+lTag,60.,0.,100.)
         pErfExp        = r.RooErfExpPdf("erfExp_%s"%iLabel,"erfExp_%s"%iLabel,lVar,lC_ErfExp,lOffSet_ErfExp,lWidth_ErfExp);
         lModelPdf = r.RooAddPdf("model_pdf_%s"%iLabel,"model_pdf_%s"%iLabel,r.RooArgList(pErfExp),r.RooArgList(pVarHigh),1);
         #addConstraint(iWorkspace,lMean_Gaus,175,3,lConstraints)
@@ -560,15 +581,10 @@ class WPeak():
 
             pPtLabel = "pT_" + str(fPt_bins[Pt_it]) + "_" + str(fPt_bins[Pt_it+1])
 
-            # nData
-            print self._lPDatas
-            nData =self._lPDatas["data_"+pPtLabel+"_pass"].sumEntries()+self._lPDatas["data_"+pPtLabel+"_fail"].sumEntries()
-            print 'nData ',nData
-
             # get models
             for Cat_it in fCats:
                 print 'processing combined fit for pT bin[%s,%s] and %s category'%(fPt_bins[Pt_it],fPt_bins[Pt_it+1],Cat_it)
-                print 'and with pass sf: %.3f and fail sf: %.3f'%(self._lW.var("tt_scalefactor_pass").getVal(),self._lW.var("tt_scalefactor_fail").getVal())
+                #print 'and with pass sf: %.3f and fail sf: %.3f'%(self._lW.var("tt_scalefactor_pass").getVal(),self._lW.var("tt_scalefactor_fail").getVal())
 
                 pPtLabelCat = pPtLabel + "_"+Cat_it
 
@@ -580,16 +596,18 @@ class WPeak():
                 pPdfConstraints_Mc   = r.RooArgSet("pPdfConstraints_Mc")
                 pPdfConstraints_Data = r.RooArgSet("pPdfConstraints_Data")
 
-                nBkg = 0
+                # normalization for each category (e.g. pass ) fixed as:
+                # norm_ratio = (tt_realW+tt_fakeW)/(minorbkg
+                norm_fakeW = self._lW.arg("number_tt_fakeW_mc_" + pPtLabelCat).getVal()
+                norm_realW = self._lW.arg("number_tt_realW_mc_" + pPtLabelCat).getVal()
+                norm_st    = self._lW.arg("number_st_mc_" + pPtLabelCat).getVal()
+                norm_wlnu  = self._lW.arg("number_wlnu_mc_" + pPtLabelCat).getVal()
+                norm_ratio = (norm_fakeW + norm_realW) / (norm_st + norm_wlnu)
+                print 'norm ratio: %s'%norm_ratio
+
                 pSamples = ['wlnu_mc','wlnu_data','st_mc','st_data','tt_fakeW_mc','tt_fakeW_data','tt_realW_mc','tt_realW_data']
                 for iLabel in pSamples:
                     lLabel = iLabel + '_' + pPtLabelCat
-
-                    if "_data" not in iLabel:
-                        if 'tt' in iLabel:
-                            nBkg += self._lW.data(lLabel+"_D").sumEntries()*self._TTsf[pPtLabelCat]
-                        else:
-                            nBkg += self._lW.data(lLabel+"_D").sumEntries()
 
                     self._lHPdfs[lLabel] = self.histPdf(lLabel)
                     self._lModels[lLabel] = self.getModel(lLabel)
@@ -599,7 +617,22 @@ class WPeak():
                             pPdfConstraints_Mc.add(self._lW.pdf(self._lConstraints[lLabel][i0]))
                         if 'data' in lLabel:
                             pPdfConstraints_Data.add(self._lW.pdf(self._lConstraints[lLabel][i0]))
-                            
+
+                # impose normalization constraint
+                # to mc
+                st_norm_mc = self._lW.arg("number_st_mc_"+pPtLabelCat)
+                wlnu_norm_mc = self._lW.arg("number_wlnu_mc_"+pPtLabelCat)
+                bkg_norm_mc = r.RooFormulaVar("bkg_norm_mc_"+pPtLabelCat,"(@0+@1)",r.RooArgList(st_norm_mc,wlnu_norm_mc))
+                norm_ratio_mc = r.RooRealVar("norm_ratio_mc_"+pPtLabelCat,"norm_ratio_mc_"+pPtLabelCat,norm_ratio)
+                tt_norm_mc = r.RooFormulaVar("tt_norm_mc_"+pPtLabelCat,"(@0*@1)",r.RooArgList(norm_ratio_mc,bkg_norm_mc))
+                
+                # to data
+                st_norm_data = self._lW.arg("number_st_data_"+pPtLabelCat)
+                wlnu_norm_data = self._lW.arg("number_wlnu_data_"+pPtLabelCat)
+                bkg_norm_data = r.RooFormulaVar("bkg_norm_data_"+pPtLabelCat,"(@0+@1)",r.RooArgList(st_norm_data,wlnu_norm_data))
+                norm_ratio_data = r.RooRealVar("norm_ratio_data_"+pPtLabelCat,"norm_ratio_data_"+pPtLabelCat,norm_ratio)
+                tt_norm_data = r.RooFormulaVar("tt_norm_data_"+pPtLabelCat,"(@0*@1)",r.RooArgList(norm_ratio_data,bkg_norm_data))
+
                 # build tt model for realw(signal) so that eff is included in parameter of fit
                 xConstraints = {}
                 for iLabel in ['tt_signal_mc','tt_signal_data']:
@@ -607,28 +640,26 @@ class WPeak():
                     self._lModels[lLabel],xConstraints[lLabel]  =  makeTTModel(self._lW,iLabel,pPtLabel,Cat_it,fPDFs[iLabel])
 
                 # build model for tt bkg (fakeW) for mc and data                                                                                                                 
+                '''
                 for iLabel in ["tt_bkg_mc","tt_bkg_data"]:
                     lLabel = iLabel + '_' + pPtLabelCat
                     lModel,lConstraints = makeModel(self._lW,lLabel,fPDFs[iLabel])
                     self._lModels[lLabel] = self.getModel(lLabel)
-
-
-                # constraints
-                pPdfConstraints_Mc.Print()
-                pPdfConstraints_Data.Print()
-
+                    '''
                 # fix variables from MC and only leave floating normalization, mean and sigma from TT
                 # variables floating: eff(realW), numbertotal(realW)
                 args = self._lW.allVars()
                 args.Print()
                 iter = args.createIterator()
                 var = iter.Next()
-                lFloating = ["mean_GausErfExp_tt_",
+                lFloating = [#"mean_GausErfExp_tt_",
+                             "mean_DoubleCB_tt_",
                              "c_GausErfExp_tt_",
                              "c_ErfExp_tt_",
                              "offset_GausErfExp_tt_",
                              "offset_ErfExp_tt_",
-                             "sigma_GausErfExp_tt_",
+                             #"sigma_GausErfExp_tt_",
+                             "sigma_DoubleCB_tt_",
                              "width_ErfExp_tt_",
                              "width_GausErfExp_tt_",
                              #"a1_GausErfExp_tt_",
@@ -636,37 +667,44 @@ class WPeak():
                              "eff_tt_signal_",
                              "numbertotal_",
                              ]
+                lFloat = []
+                lConst = []
                 while var:
                     #print var.GetName()
                     if any(f in var.GetName() for f in lFloating):
+                        lFloat.append(var.GetName())
                         print 'float: ',var.GetName()
                         pass
                     else:
+                        lConst.append(var.GetName())
                         var.setConstant(r.kTRUE)
                         print 'set constant'
                     var = iter.Next()
 
-                # build model for tt bkg (fakeW) for mc and data
-                for iLabel in ["tt_bkg_mc","tt_bkg_data"]:
-                    lLabel = iLabel + '_' + pPtLabelCat
-                    lModel,lConstraints = makeModel(self._lW,lLabel,fPDFs[iLabel])
-                    self._lModels[lLabel] = self.getModel(lLabel)
+                    
+                # build mc and data total models
+                tt_model_mc       = r.RooAddPdf("model_mc_tt_"+pPtLabelCat,"model_mc_tt_"+pPtLabelCat,r.RooArgList(self._lW.pdf("model_tt_signal_mc_"+pPtLabelCat),self._lW.pdf("model_tt_fakeW_mc_"+pPtLabelCat)))
+                tt_model_mc_ext   = r.RooExtendPdf("ext_model_mc_tt_"+pPtLabelCat,"ext_model_mc_tt_"+pPtLabelCat,tt_model_mc,tt_norm_mc)
+                st_model_mc_ext   = r.RooExtendPdf("ext_model_mc_st_"+pPtLabelCat,"ext_model_mc_st_"+pPtLabelCat,self._lW.pdf("model_st_mc_"+pPtLabelCat),st_norm_mc)
+                wlnu_model_mc_ext = r.RooExtendPdf("ext_model_mc_wlnu_"+pPtLabelCat,"ext_model_mc_wlnu_"+pPtLabelCat,self._lW.pdf("model_wlnu_mc_"+pPtLabelCat),wlnu_norm_mc)
+
+                tt_model_data       = r.RooAddPdf("model_data_tt_"+pPtLabelCat,"model_data_tt_"+pPtLabelCat,r.RooArgList(self._lW.pdf("model_tt_signal_data_"+pPtLabelCat),self._lW.pdf("model_tt_fakeW_data_"+pPtLabelCat)))
+                tt_model_data_ext   = r.RooExtendPdf("ext_model_data_tt_"+pPtLabelCat,"ext_model_data_tt_"+pPtLabelCat,tt_model_data,tt_norm_data)
+                st_model_data_ext   = r.RooExtendPdf("ext_model_data_st_"+pPtLabelCat,"ext_model_data_st_"+pPtLabelCat,self._lW.pdf("model_st_data_"+pPtLabelCat),st_norm_data)
+                wlnu_model_data_ext = r.RooExtendPdf("ext_model_data_wlnu_"+pPtLabelCat,"ext_model_data_wlnu_"+pPtLabelCat,self._lW.pdf("model_wlnu_data_"+pPtLabelCat),wlnu_norm_data)
 
                 self._lModels['TotalMc_'+pPtLabelCat] = r.RooAddPdf(("model_total_mc_"+pPtLabelCat),("model_totalmc_"+pPtLabelCat),
-                                                                    r.RooArgList(self._lModels["tt_signal_mc_"+pPtLabelCat],
-                                                                                 self._lModels["tt_bkg_mc_"+pPtLabelCat],
-                                                                                 self._lModels['wlnu_mc_'+pPtLabelCat],
-                                                                                 self._lModels['st_mc_'+pPtLabelCat]))
-                self._lModels['TotalData_'+pPtLabelCat] = r.RooAddPdf("model_total_data_"+pPtLabelCat,"model_totaldata_"+pPtLabelCat,
-                                                                      r.RooArgList(self._lModels["tt_signal_data_"+pPtLabelCat],
-                                                                                   self._lModels["tt_bkg_data_"+pPtLabelCat],
-                                                                                   self._lModels['wlnu_data_'+pPtLabelCat],
-                                                                                   self._lModels['st_data_'+pPtLabelCat]))
+                                                                    r.RooArgList(tt_model_mc_ext,st_model_mc_ext,wlnu_model_mc_ext))
+
+                self._lModels['TotalData_'+pPtLabelCat] = r.RooAddPdf(("model_total_data_"+pPtLabelCat),("model_totaldata_"+pPtLabelCat),
+                                                                    r.RooArgList(tt_model_data_ext,st_model_data_ext,wlnu_model_data_ext))
 
                 getattr(self._lW,"import")(self._lModels["TotalMc_"+pPtLabelCat],r.RooFit.RecycleConflictNodes())
                 getattr(self._lW,"import")(self._lModels["TotalData_"+pPtLabelCat],r.RooFit.RecycleConflictNodes())
 
                 # fit to data (cat)
+                print '-- fitting to data only'
+                pPdfConstraints_Data.Print()
                 pRooFitResult_Data = self._lModels['TotalData_'+pPtLabelCat].fitTo(lSData,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),
                                                                                    r.RooFit.ExternalConstraints(pPdfConstraints_Data))
                 pRooFitResult_Data.Print()
@@ -675,8 +713,12 @@ class WPeak():
                 draw(lVar,lSData,[self._lModels['TotalData_'+pPtLabelCat]],pRooFitResult_Data,lTagData)
                 x2 = self._lModels['TotalData_'+pPtLabelCat].getVariables()
                 print x2.Print("v")
-                
+                print 'Floating ',lFloat
+                print 'Fixed ',lConst
+                '''
                 # fit to mc (cat)
+                print '-- fitting to mc only'
+                pPdfConstraints_Mc.Print()
                 pRooFitResult_Mc   = self._lModels['TotalMc_'+pPtLabelCat].fitTo(lSMc,r.RooFit.Strategy(1),r.RooFit.Save(1),r.RooFit.SumW2Error(r.kTRUE),r.RooFit.Minimizer("Minuit2"),
                                                                                  r.RooFit.ExternalConstraints(pPdfConstraints_Mc))
                 lTagMc = 'mc_only_'+pPtLabelCat
@@ -690,8 +732,9 @@ class WPeak():
                 lTagDataMc += "_ttmatched"
                 params = {}
                 drawDataMc(lVar,lSData,[self._lModels['TotalData_'+pPtLabelCat]],lSMc,[self._lModels['TotalMc_'+pPtLabelCat]],pRooFitResult_Mc,pRooFitResult_Data,params,lTagDataMc)
+                '''
 
-
+            '''
             # combined data (pass and fail)
             combData_data = r.RooDataSet("combData_data","combData_data",r.RooArgSet(self._lMSD,self._lWeight),r.RooFit.WeightVar(self._lWeight),
                                          RooFit.Index(pCats),
@@ -728,7 +771,7 @@ class WPeak():
             drawDataMc(lVar,lSData,
                        [self._lW.pdf("model_total_data_"+pPtLabel+"_fail")],lSMc,[self._lW.pdf("model_total_mc_"+pPtLabel+"_fail")],
                        simFit_total_mc,simFit_total_data,params,"data_fail_simult_tt")
-
+                       '''
             # write workspace
             self._lW.writeToFile(fOutput)
 
